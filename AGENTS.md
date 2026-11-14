@@ -24,7 +24,7 @@ Next.js 16.4.6 (App Router, Turbopack, Cache Components, Partial Prefetching, Re
 - **Кода проекта в репозитории нет** — этап 0 не выполнен
 - `.gitignore`: `!.env.example` есть; `/data` (SQLite) — добавить на этапе 0
 - Ветка этапа 0 не выбрана: **А** (перенос существующего кода; кандидат — `E:\repositories\food-ordering`, не проверялся) или **Б** (пересборка с нуля по этому документу)
-- **AI skills (AI Hero)**: 37 навыков mattpocock/skills установлены в `.zcode/skills/` (основное место ZCode) и `.agents/skills/` (для других агентов — VS Code/Copilot) + `skills-lock.json`; конфигурация — `docs/agents/` (трекер GitHub Issues, канонические лейблы триажа, single-context доки); язык домена — `GLOSSARY.md`. ZCode подхватывает навыки в новой сессии
+- **AI skills (AI Hero)**: 37 навыков mattpocock/skills установлены в `.zcode/skills/` (основное место ZCode) и `.agents/skills/` (для других агентов — VS Code/Copilot) + `skills-lock.json`; конфигурация — `docs/agents/` (трекер — локальные markdown-файлы в `.scratch/`, канонические лейблы триажа, single-context доки); язык домена — `GLOSSARY.md`. ZCode подхватывает навыки в новой сессии
 
 ## 4. Демо-данные (после `pnpm db:seed`)
 
@@ -46,7 +46,7 @@ Next.js 16.4.6 (App Router, Turbopack, Cache Components, Partial Prefetching, Re
 8. **Темы**: next-themes (attribute=class, system); иконки переключателя — обе рендерятся, видимость через `dark:` классы (без mounted-состояния — React Compiler линт против set-state-in-effect).
 9. **proxy, не middleware** — `src/proxy.ts` (гард /admin по роли).
 10. **Заказ**: id = uuid (неугадываемый) → трекинг доступен гостю; цены снапшотятся из БД (клиентским ценам не доверять); промокод ревалидируется на сервере; запись в `sqlite.transaction()`.
-11. **AI skills (mattpocock/skills)**: файлы — копии в `.zcode/skills/` (читает ZCode) и `.agents/skills/` (читают другие агенты); обновление — `npx skills@latest update`. Конфигурация навыков — `docs/agents/*.md`; термины домена — только через `GLOSSARY.md`. Навыкам `/to-spec`, `/to-tickets`, `/triage` нужен `gh` CLI (на 2026-11-14 не установлен — установить при первом использовании). `.zcode/skills` важнее `.agents/skills` при обнаружении — копии идентичны, конфликта нет.
+11. **AI skills (mattpocock/skills)**: файлы — копии в `.zcode/skills/` (читает ZCode) и `.agents/skills/` (читают другие агенты); обновление — `npx skills@latest update`. Конфигурация навыков — `docs/agents/*.md`; термины домена — только через `GLOSSARY.md`. Трекер — локальные markdown-файлы (`.scratch/<feature>/`): `gh` CLI не нужен, спеки и тикеты коммитятся вместе с этапом. `.zcode/skills` важнее `.agents/skills` при обнаружении — копии идентичны, конфликта нет.
 
 ## 6. План работ
 
@@ -175,7 +175,7 @@ Next.js 16.4.6 (App Router, Turbopack, Cache Components, Partial Prefetching, Re
 
 ### Issue tracker
 
-Issues — в GitHub Issues этого репо (операции через `gh` CLI). См. `docs/agents/issue-tracker.md`.
+Issues — локальные markdown-файлы в `.scratch/<feature-slug>/`: спека — `spec.md`, тикеты — `issues/NN-<slug>.md` с `Status:` и `Blocked by:` строками. См. `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 
