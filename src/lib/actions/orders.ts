@@ -31,22 +31,22 @@ export async function createOrder(
 	const comment = payload.comment?.trim() ?? ''
 
 	if (customerName.length < 2) {
-		return { ok: false, error: 'Укажите имя' }
+		return { data: null, error: 'Укажите имя' }
 	}
 	if (phone.replace(/\D/g, '').length < 10) {
-		return { ok: false, error: 'Укажите корректный телефон' }
+		return { data: null, error: 'Укажите корректный телефон' }
 	}
 	if (fulfillment !== 'delivery' && fulfillment !== 'pickup') {
-		return { ok: false, error: 'Некорректный способ получения' }
+		return { data: null, error: 'Некорректный способ получения' }
 	}
 	if (fulfillment === 'delivery' && address.length < 5) {
-		return { ok: false, error: 'Укажите адрес доставки' }
+		return { data: null, error: 'Укажите адрес доставки' }
 	}
 
 	const cart = await getOrCreateCart()
 	const lines = await getCartLines(cart.id)
 	if (lines.length === 0) {
-		return { ok: false, error: 'Корзина пуста' }
+		return { data: null, error: 'Корзина пуста' }
 	}
 
 	// Ревалидация промокода на сервере: isActive + окно дат (§5.3)
@@ -104,22 +104,22 @@ export async function createOrder(
 	// Server Action + read-your-own-writes → updateTag (revalidateTag(tag) в v16 deprecated)
 	updateTag('orders')
 	revalidatePath('/')
-	return { ok: true, data: { orderId } }
+	return { data: { orderId }, error: null }
 }
 
 /** applyPromoCode: валидация на сервере, promo_id на корзину */
 export async function applyPromoCode(code: string): Promise<ActionResult<{ name: string }>> {
 	const normalized = code?.trim().toUpperCase() ?? ''
-	if (!normalized) return { ok: false, error: 'Введите промокод' }
+	if (!normalized) return { data: null, error: 'Введите промокод' }
 
 	const [promo] = await db.select().from(promotions).where(eq(promotions.code, normalized))
 	if (!promo?.isActive) {
-		return { ok: false, error: 'Промокод не найден' }
+		return { data: null, error: 'Промокод не найден' }
 	}
 
 	const now = new Date()
 	if (!isPromoInWindow(promo, now)) {
-		return { ok: false, error: 'Срок действия промокода истёк' }
+		return { data: null, error: 'Срок действия промокода истёк' }
 	}
 
 	const cart = await getOrCreateCart()
@@ -129,5 +129,5 @@ export async function applyPromoCode(code: string): Promise<ActionResult<{ name:
 		.where(eq(carts.id, cart.id))
 
 	revalidatePath('/')
-	return { ok: true, data: { name: promo.name } }
+	return { data: { name: promo.name }, error: null }
 }

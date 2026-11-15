@@ -1,2 +1,2 @@
-/** Результат серверных действий: дискриминированный union (AGENTS.md §11) */
-export type ActionResult<T> = { ok: true; data: T } | { ok: false; error: string }
+/** Результат серверных действий: дискриминант — data/error (null-поля) */
+export type ActionResult<T> = { data: T; error: null } | { data: null; error: string }

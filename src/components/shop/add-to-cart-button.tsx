@@ -39,7 +39,7 @@ export function AddToCartButton({
 				startTransition(async () => {
 					setOptimisticPending(true)
 					const result = await addToCart(productId, qty)
-					if (result.ok) {
+					if (result.error === null) {
 						toast.success('Добавлено в корзину')
 					} else {
 						toast.error(result.error)

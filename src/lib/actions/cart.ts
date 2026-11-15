@@ -18,14 +18,14 @@ export async function addToCart(
 	qty = 1,
 ): Promise<ActionResult<{ productId: string; qty: number }>> {
 	if (!Number.isInteger(qty) || qty < 1 || qty > MAX_QTY) {
-		return { ok: false, error: 'Недопустимое количество' }
+		return { data: null, error: 'Недопустимое количество' }
 	}
 
 	const [product] = await db
 		.select({ id: products.id })
 		.from(products)
 		.where(eq(products.id, productId))
-	if (!product) return { ok: false, error: 'Товар не найден' }
+	if (!product) return { data: null, error: 'Товар не найден' }
 
 	const cart = await getOrCreateCart()
 	const existing = await findCartItem(cart.id, productId)
@@ -40,7 +40,7 @@ export async function addToCart(
 	}
 
 	invalidateShop()
-	return { ok: true, data: { productId, qty } }
+	return { data: { productId, qty }, error: null }
 }
 
 export async function setQty(
@@ -48,12 +48,12 @@ export async function setQty(
 	qty: number,
 ): Promise<ActionResult<{ productId: string; qty: number }>> {
 	if (!Number.isInteger(qty) || qty < 0 || qty > MAX_QTY) {
-		return { ok: false, error: 'Недопустимое количество' }
+		return { data: null, error: 'Недопустимое количество' }
 	}
 
 	const cart = await getOrCreateCart()
 	const existing = await findCartItem(cart.id, productId)
-	if (!existing) return { ok: false, error: 'Товара нет в корзине' }
+	if (!existing) return { data: null, error: 'Товара нет в корзине' }
 
 	if (qty === 0) {
 		await db.delete(cartItems).where(eq(cartItems.id, existing.id))
@@ -62,7 +62,7 @@ export async function setQty(
 	}
 
 	invalidateShop()
-	return { ok: true, data: { productId, qty } }
+	return { data: { productId, qty }, error: null }
 }
 
 export async function removeFromCart(
@@ -70,9 +70,9 @@ export async function removeFromCart(
 ): Promise<ActionResult<{ productId: string }>> {
 	const cart = await getOrCreateCart()
 	const existing = await findCartItem(cart.id, productId)
-	if (!existing) return { ok: false, error: 'Товара нет в корзине' }
+	if (!existing) return { data: null, error: 'Товара нет в корзине' }
 
 	await db.delete(cartItems).where(eq(cartItems.id, existing.id))
 	invalidateShop()
-	return { ok: true, data: { productId } }
+	return { data: { productId }, error: null }
 }
