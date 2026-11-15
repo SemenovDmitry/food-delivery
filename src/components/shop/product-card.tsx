@@ -2,7 +2,8 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
+import { useEffect, useRef, useState } from 'react'
 import { AddToCartButton } from '@/components/shop/add-to-cart-button'
 import { PriceLine } from '@/components/shop/price-line'
 import { ProductDetails } from '@/components/shop/product-details'
@@ -10,33 +11,48 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import type { MenuProduct } from '@/queries/menu'
 
 /**
- * Карточка товара. Клик открывает модалку на клиентском состоянии, URL
- * дополняется хэшем `#product=<id>` через replaceState (ссылку можно передать —
- * каталог откроется сразу с этой модалкой). Замена записи вместо push/back:
- * сырой pushState/back в Next 16 конфликтует с управлением историей (§5.22).
+ * Карточка товара. Модалка синхронизирована с URL-параметром `?product=<id>`
+ * (источник правды — URL): клик пишет параметр через pushState (кнопка Back
+ * закрывает модалку), deep-link `/?product=<id>` открывает каталог сразу
+ * с модалкой. Якорная навигация #pizza/#sets остаётся свободной (§5.22).
  * Прямой заход на /product/<id> — fallback-страница.
  */
 export function ProductCard({ product }: { product: MenuProduct }) {
+	const searchParams = useSearchParams()
 	const [open, setOpen] = useState(false)
-	const hash = `#product=${product.id}`
+	/** модалка открыта кликом (в истории есть запись) или пришла по ссылке */
+	const pushedRef = useRef(false)
 
-	// deep-link: /#product=<id> → каталог открывается сразу с модалкой
+	// URL — источник правды: параметр появился (deep-link/Back/Forward) → открыть, исчез → закрыть
+	const urlProduct = searchParams.get('product')
 	useEffect(() => {
-		if (window.location.hash === hash) setOpen(true)
-	}, [hash])
+		setOpen(urlProduct === product.id)
+	}, [urlProduct, product.id])
 
 	const openModal = (e: React.MouseEvent) => {
 		// средний клик/модификаторы — отдаём браузеру (открыть в новой вкладке)
 		if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return
 		e.preventDefault()
+		const params = new URLSearchParams(window.location.search)
+		params.set('product', product.id)
+		window.history.pushState(null, '', `/?${params.toString()}`)
 		setOpen(true)
-		window.history.replaceState(null, '', hash)
+		pushedRef.current = true
 	}
 
 	const closeModal = (next: boolean) => {
 		setOpen(next)
 		if (!next) {
-			window.history.replaceState(null, '', window.location.pathname + window.location.search)
+			if (pushedRef.current) {
+				pushedRef.current = false
+				window.history.back() // снимаем запись с параметром, URL возвращается на каталог
+			} else {
+				// модалка пришла по ссылке: убираем параметр без лишней записи истории
+				const params = new URLSearchParams(window.location.search)
+				params.delete('product')
+				const qs = params.toString()
+				window.history.replaceState(null, '', qs ? `/?${qs}` : '/')
+			}
 		}
 	}
 
