@@ -2,6 +2,10 @@
  * Правила доставки (гриллинг этапа 1, Q17–Q18) — чистая функция БЕЗ 'server-only':
  * используется и в createOrder (истина), и в клиентском preview (computeTotals).
  */
+
+/** Способ исполнения заказа — доменный термин (GLOSSARY «Fulfillment») */
+export type Fulfillment = 'delivery' | 'pickup'
+
 export type DeliverySettings = {
 	deliveryFee: number
 	freeDeliveryThreshold: number
@@ -9,7 +13,7 @@ export type DeliverySettings = {
 
 /** Бесплатная от порога (порог — от суммы товаров ДО скидки), самовывоз всегда 0 */
 export function deliveryFeeFor(
-	fulfillment: 'delivery' | 'pickup',
+	fulfillment: Fulfillment,
 	subtotal: number,
 	settings: DeliverySettings,
 ): number {

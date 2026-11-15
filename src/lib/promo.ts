@@ -18,6 +18,18 @@ export function isPromoInWindow(promo: Promotion, now: Date): boolean {
 	return started && notEnded
 }
 
+/**
+ * Валидность акции ПО СОСТОЯНИЮ (не зависит от состава корзины): isActive + окно.
+ * null = применима; строка = причина отказа. Показ активного промо на /cart и
+ * /checkout (ревью этапа 1, C1: раньше окно/isActive проверялись только в createOrder);
+ * createOrder при оформлении проверяет то же самое (§5.10).
+ */
+export function promoStateReason(promo: Promotion | null, now: Date): string | null {
+	if (!promo?.isActive) return 'Промокод больше не действует'
+	if (!isPromoInWindow(promo, now)) return 'Срок действия промокода истёк'
+	return null
+}
+
 /** Структурный минимум строки для расчёта — совместим с БД-строками и клиентскими данными */
 export type CalcLine = { price: number; qty: number; categoryId: number }
 

@@ -47,7 +47,10 @@ async function ReceiptContent({ params }: { params: Promise<{ id: string }> }) {
 				<CardHeader>
 					<CardTitle className='flex flex-wrap items-center gap-2'>
 						Заказ № {order.id.slice(0, 8)}
-						<Badge variant='secondary'>{STATUS_LABELS[order.status as OrderStatus]}</Badge>
+						<Badge variant='secondary'>
+							{/* status — text-колонка: невалидное значение не маскируем кастомом (ревью S7) */}
+							{STATUS_LABELS[order.status as OrderStatus] ?? order.status}
+						</Badge>
 					</CardTitle>
 				</CardHeader>
 				<CardContent className='space-y-4'>

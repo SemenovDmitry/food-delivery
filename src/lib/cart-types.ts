@@ -1,3 +1,4 @@
+import type { DeliverySettings } from '@/lib/delivery'
 import type { CalcPromo } from '@/lib/promo'
 
 /**
@@ -21,9 +22,12 @@ export type CartPromoData = CalcPromo & {
 	code: string | null
 	/** «только: Шаурма, при заказе от 1 000 ₽» — собирается на сервере */
 	conditionLabel: string
+	/**
+	 * Валидность по состоянию (isActive + окно, promoStateReason) — считается
+	 * на сервере при загрузке; null = применима. Не зависит от состава корзины.
+	 */
+	stateReason: string | null
 }
 
-export type DeliverySettingsData = {
-	deliveryFee: number
-	freeDeliveryThreshold: number
-}
+/** Настройки доставки — алиас доменного типа (ревью этапа 1: не дублировать) */
+export type DeliverySettingsData = DeliverySettings

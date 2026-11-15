@@ -198,9 +198,15 @@ export function CheckoutForm({
 							id='checkout-comment'
 							placeholder='Домофон, пожелания к заказу…'
 							rows={2}
+							aria-invalid={errors.comment !== undefined}
+							aria-describedby={errors.comment ? 'checkout-comment-error' : undefined}
 							{...register('comment')}
 						/>
-						{errors.comment && <p className='text-sm text-destructive'>{errors.comment.message}</p>}
+						{errors.comment && (
+							<p id='checkout-comment-error' className='text-sm text-destructive'>
+								{errors.comment.message}
+							</p>
+						)}
 					</div>
 				</section>
 			</form>

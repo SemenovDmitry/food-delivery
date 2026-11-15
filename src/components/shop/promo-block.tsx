@@ -32,12 +32,6 @@ export function PromoBlock({ activePromo, availablePromos, lines, promoQuery }: 
 	/** ошибка поля кода живёт здесь: успех карточки/снятия сбрасывает её (не залипает) */
 	const [codeError, setCodeError] = useState<string | null>(null)
 
-	const calcLines = lines.map((line) => ({
-		price: line.price,
-		qty: line.qty,
-		categoryId: line.categoryId,
-	}))
-
 	function apply(code: string) {
 		startTransition(async () => {
 			const result = await applyPromoCode(code)
@@ -60,7 +54,15 @@ export function PromoBlock({ activePromo, availablePromos, lines, promoQuery }: 
 		})
 	}
 
-	const activeDiscount = activePromo ? calcDiscount(calcLines, activePromo) : null
+	// CartLineData структурно = CalcLine — передаём напрямую (ревью S7)
+	const qtyDiscount = activePromo ? calcDiscount(lines, activePromo) : null
+	// невалидность активной акции: по состоянию (isActive/окно — сервер, готовая формулировка)
+	// либо по составу корзины (qty — причина из calcDiscount)
+	const notUsableReason = activePromo?.stateReason
+		? activePromo.stateReason
+		: qtyDiscount && !qtyDiscount.applicable
+			? `Промокод больше не действует: ${qtyDiscount.reason}`
+			: null
 
 	return (
 		<section aria-labelledby='cart-promos-heading' className='space-y-3'>
@@ -70,7 +72,7 @@ export function PromoBlock({ activePromo, availablePromos, lines, promoQuery }: 
 
 			<ul className='grid gap-2 sm:grid-cols-2'>
 				{availablePromos.map((promo) => {
-					const discount = calcDiscount(calcLines, promo)
+					const discount = calcDiscount(lines, promo)
 					const isActive = activePromo?.id === promo.id
 					const reasonId = `promo-reason-${promo.id}`
 					return (
@@ -111,11 +113,11 @@ export function PromoBlock({ activePromo, availablePromos, lines, promoQuery }: 
 								<span className='text-muted-foreground'>({activePromo.code})</span>
 							)}
 						</p>
-						{activeDiscount?.applicable ? (
-							<p className='text-sm text-primary'>Скидка: −{formatPrice(activeDiscount.amount)}</p>
+						{!notUsableReason && qtyDiscount?.applicable ? (
+							<p className='text-sm text-primary'>Скидка: −{formatPrice(qtyDiscount.amount)}</p>
 						) : (
 							<p className='text-sm text-destructive'>
-								Промокод больше не действует{activeDiscount ? `: ${activeDiscount.reason}` : ''}
+								{notUsableReason ?? 'Промокод больше не действует'}
 							</p>
 						)}
 					</div>

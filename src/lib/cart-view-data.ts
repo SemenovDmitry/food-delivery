@@ -6,6 +6,7 @@ import { categories } from '@/db/schema'
 import { type CartLine, getCartForRead, getCartLines } from '@/lib/cart'
 import type { CartLineData, CartPromoData, DeliverySettingsData } from '@/lib/cart-types'
 import { formatPrice } from '@/lib/format'
+import { promoStateReason } from '@/lib/promo'
 import { getDeliverySettings } from '@/lib/settings'
 import { getActivePromotions, getPromotionById } from '@/queries/promotions'
 
@@ -27,7 +28,11 @@ function toLineData(line: CartLine): CartLineData {
 	}
 }
 
-function toPromoData(promo: Promotion, categoryNames: Map<number, string>): CartPromoData {
+function toPromoData(
+	promo: Promotion,
+	categoryNames: Map<number, string>,
+	stateReason: string | null = null,
+): CartPromoData {
 	const parts: string[] = []
 	if (promo.categoryId !== null) {
 		const name = categoryNames.get(promo.categoryId)
@@ -46,6 +51,7 @@ function toPromoData(promo: Promotion, categoryNames: Map<number, string>): Cart
 		categoryId: promo.categoryId,
 		minTotal: promo.minTotal,
 		conditionLabel: parts.length > 0 ? parts.join(', ') : 'на весь заказ',
+		stateReason,
 	}
 }
 
@@ -67,7 +73,11 @@ export async function loadCartViewData(): Promise<CartViewData | null> {
 
 	return {
 		lines: lines.map(toLineData),
-		activePromo: promoRow ? toPromoData(promoRow, categoryNames) : null,
+		// активное промо проверяется по состоянию ЗДЕСЬ (ревью C1): неактивное/вне окна
+		// доедет на клиент с причиной и не попадёт в скидку (computeTotals)
+		activePromo: promoRow
+			? toPromoData(promoRow, categoryNames, promoStateReason(promoRow, new Date()))
+			: null,
 		availablePromos: available.map((promo) => toPromoData(promo, categoryNames)),
 		delivery: await getDeliverySettings(),
 	}
