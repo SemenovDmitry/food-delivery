@@ -6,16 +6,15 @@ import { useOptimistic, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { removeFromCart, setQty } from '@/lib/actions/cart'
 import { computeTotals } from '@/lib/cart-totals'
 import type { CartLineData, CartPromoData, DeliverySettingsData } from '@/lib/cart-types'
 import { MAX_QTY } from '@/lib/constants'
+import type { Fulfillment } from '@/lib/delivery'
 import { formatPrice } from '@/lib/format'
+import { OrderTotals } from './order-totals'
 import { PromoBlock } from './promo-block'
-
-type Fulfillment = 'delivery' | 'pickup'
 
 type CartInteractiveProps = {
 	lines: CartLineData[]
@@ -162,35 +161,13 @@ export function CartInteractive({
 							</TabsList>
 						</Tabs>
 
-						<div aria-live='polite'>
-							<dl className='space-y-1.5 text-sm'>
-								<div className='flex justify-between'>
-									<dt>Товары</dt>
-									<dd className='tabular-nums'>{formatPrice(totals.subtotal)}</dd>
-								</div>
-								{totals.discountAmount > 0 && activePromo && (
-									<div className='flex justify-between text-primary'>
-										<dt>Скидка ({activePromo.name})</dt>
-										<dd className='tabular-nums'>−{formatPrice(totals.discountAmount)}</dd>
-									</div>
-								)}
-								<div className='flex justify-between'>
-									<dt>Доставка</dt>
-									<dd className='tabular-nums'>
-										{isPickup
-											? '—'
-											: totals.deliveryCost === 0
-												? 'бесплатно'
-												: formatPrice(totals.deliveryCost)}
-									</dd>
-								</div>
-							</dl>
-							<Separator className='my-3' />
-							<div className='flex justify-between font-semibold'>
-								<span>Итого</span>
-								<span className='tabular-nums'>{formatPrice(totals.total)}</span>
-							</div>
-						</div>
+						<OrderTotals
+							subtotal={totals.subtotal}
+							discountAmount={totals.discountAmount}
+							discountLabel={activePromo?.name ?? null}
+							deliveryCost={totals.deliveryCost}
+							isPickup={isPickup}
+						/>
 
 						{!isPickup && (
 							<p className='text-sm text-muted-foreground'>

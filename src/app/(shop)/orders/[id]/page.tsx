@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 import { CopyLinkButton } from '@/components/shop/copy-link-button'
+import { OrderTotals } from '@/components/shop/order-totals'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
@@ -38,7 +39,6 @@ async function ReceiptContent({ params }: { params: Promise<{ id: string }> }) {
 
 	const { order, items, promo } = details
 	const subtotal = items.reduce((sum, item) => sum + item.price * item.qty, 0)
-	const total = subtotal - order.discountAmount + order.deliveryFee
 	const isPickup = order.fulfillment !== 'delivery'
 
 	return (
@@ -67,32 +67,13 @@ async function ReceiptContent({ params }: { params: Promise<{ id: string }> }) {
 
 					<Separator />
 
-					<dl className='space-y-1.5 text-sm'>
-						<div className='flex justify-between'>
-							<dt>Товары</dt>
-							<dd className='tabular-nums'>{formatPrice(subtotal)}</dd>
-						</div>
-						{promo && order.discountAmount > 0 && (
-							<div className='flex justify-between text-primary'>
-								<dt>Скидка ({promo.name})</dt>
-								<dd className='tabular-nums'>−{formatPrice(order.discountAmount)}</dd>
-							</div>
-						)}
-						<div className='flex justify-between'>
-							<dt>Доставка</dt>
-							<dd className='tabular-nums'>
-								{isPickup
-									? '—'
-									: order.deliveryFee === 0
-										? 'бесплатно'
-										: formatPrice(order.deliveryFee)}
-							</dd>
-						</div>
-						<div className='flex justify-between pt-1 font-semibold text-base'>
-							<dt>Итого</dt>
-							<dd className='tabular-nums'>{formatPrice(total)}</dd>
-						</div>
-					</dl>
+					<OrderTotals
+						subtotal={subtotal}
+						discountAmount={order.discountAmount}
+						discountLabel={promo && order.discountAmount > 0 ? promo.name : null}
+						deliveryCost={order.deliveryFee}
+						isPickup={isPickup}
+					/>
 
 					<Separator />
 

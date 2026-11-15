@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
+import { OrderTotals } from '@/components/shop/order-totals'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -17,7 +18,6 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { createOrder } from '@/lib/actions/orders'
@@ -217,35 +217,13 @@ export function CheckoutForm({
 						<CardTitle>Итог</CardTitle>
 					</CardHeader>
 					<CardContent className='space-y-4'>
-						<div aria-live='polite'>
-							<dl className='space-y-1.5 text-sm'>
-								<div className='flex justify-between'>
-									<dt>Товары</dt>
-									<dd className='tabular-nums'>{formatPrice(totals.subtotal)}</dd>
-								</div>
-								{totals.discountAmount > 0 && activePromo && (
-									<div className='flex justify-between text-primary'>
-										<dt>Скидка ({activePromo.name})</dt>
-										<dd className='tabular-nums'>−{formatPrice(totals.discountAmount)}</dd>
-									</div>
-								)}
-								<div className='flex justify-between'>
-									<dt>Доставка</dt>
-									<dd className='tabular-nums'>
-										{isPickup
-											? '—'
-											: totals.deliveryCost === 0
-												? 'бесплатно'
-												: formatPrice(totals.deliveryCost)}
-									</dd>
-								</div>
-							</dl>
-							<Separator className='my-3' />
-							<div className='flex justify-between font-semibold'>
-								<span>Итого</span>
-								<span className='tabular-nums'>{formatPrice(totals.total)}</span>
-							</div>
-						</div>
+						<OrderTotals
+							subtotal={totals.subtotal}
+							discountAmount={totals.discountAmount}
+							discountLabel={activePromo?.name ?? null}
+							deliveryCost={totals.deliveryCost}
+							isPickup={isPickup}
+						/>
 
 						<Button
 							type='submit'
