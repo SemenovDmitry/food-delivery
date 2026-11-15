@@ -1,19 +1,12 @@
 import { Footer } from '@/components/shop/footer'
 import { Header } from '@/components/shop/header'
 
-/** Рендерит {children} + слот {modal} — перехват /product/[id] с главной (§11) */
-export default function ShopLayout({
-	children,
-	modal,
-}: {
-	children: React.ReactNode
-	modal: React.ReactNode
-}) {
+/** Каркас магазина: header/footer; модалка товара живёт в карточке (§5.22) */
+export default function ShopLayout({ children }: { children: React.ReactNode }) {
 	return (
 		<div className='flex min-h-svh flex-col'>
 			<Header />
 			<div className='flex-1'>{children}</div>
-			{modal}
 			<Footer />
 		</div>
 	)

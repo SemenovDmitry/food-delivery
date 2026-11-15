@@ -1,19 +1,35 @@
+'use client'
+
 import Image from 'next/image'
 import Link from 'next/link'
+import { useState } from 'react'
 import { AddToCartButton } from '@/components/shop/add-to-cart-button'
 import { PriceLine } from '@/components/shop/price-line'
+import { ProductDetails } from '@/components/shop/product-details'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import type { MenuProduct } from '@/queries/menu'
 
 /**
- * Серверная карточка товара: фото из MinIO или emoji-фолбэк,
- * у сетов — зачёркнутая старая цена (setOldPrice из set_items) и бейдж выгоды.
- * Кликабельны только медиа и название — кнопка не вложена в ссылку (a11y).
+ * Карточка товара. Клик открывает модалку на клиентском состоянии.
+ * URL НЕ синхронизируем: history.pushState в Next 16 интегрирован с роутером
+ * и вызывает тяжёлую синхронизацию состояния (лаг открытия, §5.22) —
+ * шаринг и прямой заход работают через fallback-страницу /product/[id].
  */
 export function ProductCard({ product }: { product: MenuProduct }) {
+	const [open, setOpen] = useState(false)
+
+	const openModal = (e: React.MouseEvent) => {
+		// средний клик/модификаторы — отдаём браузеру (открыть в новой вкладке)
+		if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return
+		e.preventDefault()
+		setOpen(true)
+	}
+
 	return (
 		<article className='flex flex-col overflow-hidden rounded-xl border'>
 			<Link
 				href={`/product/${product.id}`}
+				onClick={openModal}
 				className='flex h-36 items-center justify-center bg-muted text-5xl'
 				aria-label={`Открыть «${product.name}»`}
 			>
@@ -31,7 +47,11 @@ export function ProductCard({ product }: { product: MenuProduct }) {
 			</Link>
 			<div className='flex flex-1 flex-col gap-1 p-3'>
 				<h3 className='font-semibold'>
-					<Link href={`/product/${product.id}`} className='transition-colors hover:text-primary'>
+					<Link
+						href={`/product/${product.id}`}
+						onClick={openModal}
+						className='transition-colors hover:text-primary'
+					>
 						{product.name}
 					</Link>
 				</h3>
@@ -50,9 +70,18 @@ export function ProductCard({ product }: { product: MenuProduct }) {
 					<PriceLine price={product.price} oldPrice={product.setOldPrice} />
 				</div>
 				<div className='pt-2'>
-					<AddToCartButton productId={product.id} fullWidth />
+					<AddToCartButton productId={product.id} size='lg' fullWidth />
 				</div>
 			</div>
+
+			<Dialog open={open} onOpenChange={setOpen}>
+				<DialogContent className='sm:max-w-md'>
+					<DialogHeader>
+						<DialogTitle>{product.name}</DialogTitle>
+					</DialogHeader>
+					<ProductDetails product={product} />
+				</DialogContent>
+			</Dialog>
 		</article>
 	)
 }

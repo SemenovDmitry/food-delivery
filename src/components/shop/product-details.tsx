@@ -2,31 +2,21 @@
 
 import { Minus, Plus } from 'lucide-react'
 import Image from 'next/image'
-import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { PriceLine } from '@/components/shop/price-line'
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { MAX_QTY } from '@/lib/constants'
 import { formatPrice } from '@/lib/format'
 import type { MenuProduct } from '@/queries/menu'
 
-type ProductDetailsProps = {
-	product: MenuProduct
-	/** true → рендер внутри модалки (intercepting), закрытие через router.back() */
-	asDialog?: boolean
-}
-
 /**
- * Детали товара: два режима (модалка / страница), степпер количества.
- * Фото из MinIO или emoji-фолбэк; у сета — состав и зачёркнутая старая цена.
+ * Тело деталей товара (состав, степпер количества) — общее для модалки
+ * в карточке и fallback-страницы /product/[id].
  */
-export function ProductDetails({ product, asDialog = false }: ProductDetailsProps) {
+export function ProductDetails({ product }: { product: MenuProduct }) {
 	const [qty, setQty] = useState(1)
-	const [open, setOpen] = useState(true)
-	const router = useRouter()
 
-	const content = (
+	return (
 		<div className='flex flex-col gap-4'>
 			<div className='flex h-44 items-center justify-center rounded-lg bg-muted text-6xl'>
 				{product.imageUrl ? (
@@ -87,33 +77,6 @@ export function ProductDetails({ product, asDialog = false }: ProductDetailsProp
 					<Plus aria-hidden className='size-4' />
 				</Button>
 			</div>
-		</div>
-	)
-
-	if (asDialog) {
-		return (
-			// open — состояние: Radix закрывает диалог сразу, router.back() синхронизирует URL
-			<Dialog
-				open={open}
-				onOpenChange={(next) => {
-					setOpen(next)
-					if (!next) router.back()
-				}}
-			>
-				<DialogContent className='sm:max-w-md'>
-					<DialogHeader>
-						<DialogTitle>{product.name}</DialogTitle>
-					</DialogHeader>
-					{content}
-				</DialogContent>
-			</Dialog>
-		)
-	}
-
-	return (
-		<div className='mx-auto max-w-2xl px-4 py-8'>
-			<h1 className='mb-4 text-2xl font-bold'>{product.name}</h1>
-			{content}
 		</div>
 	)
 }
