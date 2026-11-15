@@ -17,7 +17,7 @@
 
 ## 2. Стек
 
-Next.js 16.4.6 (App Router, Turbopack, Cache Components, Partial Prefetching, React Compiler) · React 19.3 · TypeScript strict · Tailwind v4 + shadcn/ui (radix, preset nova) · **PostgreSQL 17 в docker-compose + Drizzle ORM (pg-core, драйвер postgres-js, миграции drizzle-kit)** · better-auth (email+password, роли admin/customer) · **MinIO (S3-совместимое хранилище; клиент @aws-sdk/client-s3) + sharp (обработка фото)** · AI SDK 7 (`ai` + `@ai-sdk/react` + провайдеры openai/anthropic/google) · next-themes · pnpm.
+Next.js 16.4.6 (App Router, Turbopack, Cache Components, Partial Prefetching, React Compiler) · React 19.3 · TypeScript strict · Tailwind v4 + shadcn/ui (radix, preset nova) · **PostgreSQL 17 в docker-compose + Drizzle ORM (pg-core, драйвер postgres-js, миграции drizzle-kit)** · better-auth (email+password, роли admin/manager/customer) · **MinIO (S3-совместимое хранилище; клиент @aws-sdk/client-s3) + sharp (обработка фото)** · AI SDK 7 (`ai` + `@ai-sdk/react` + провайдеры openai/anthropic/google) · next-themes · pnpm.
 
 Решения гриллинга 2026-11-15 (полная картина — §6, §8, §11): **без отдельного бэкенда** — монолит Next.js: чтения RSC напрямую из БД, записи Server Actions, Route Handlers ровно 4; **Postgres вместо SQLite** с этапа 0; **серверная корзина вместо Zustand**; **максимальное кеширование** (§5.3, §6, §11).
 
@@ -26,6 +26,7 @@ Next.js 16.4.6 (App Router, Turbopack, Cache Components, Partial Prefetching, Re
 - GitHub: репозиторий привязан — `origin → https://github.com/SemenovDmitry/food-delivery`; кода проекта нет — коммиты только README/.gitignore и AI skills
 - **Этап 0 — вариант Б: пересборка с нуля** (решено на гриллинге 2026-11-15). Кандидат А (`E:\repositories\food-ordering`) исключён: это Express+Prisma REST-бэкенд, **другой проект — не трогать**
 - Стек переопределён 2026-11-15: Postgres вместо SQLite, серверная корзина вместо Zustand-persist, MinIO + Docker-готовность с этапа 0 — см. §2, §5, §6, §8, §11
+- Роутинг и роли (2026-11-15): **меню — на главной `/`** (отдельного `/menu` нет); модалка товара открывается по ссылке `/product/[id]` с главной (intercepting); роли **admin/manager/customer**; закрытые зоны: `/admin/*` — admin+manager (права manager внутри — при описании layout), `/orders` и `/orders/[id]` — владелец по сессии (uuid-ссылка для гостя остаётся); этап 9 — **фейковая оплата** (мок-страница), этапы 10–11 → §9 roadmap
 - `.gitignore`: `!.env.example` есть; `/data` для SQLite больше не актуальна — volume БД живёт в Docker
 - **AI skills (AI Hero)**: 37 навыков mattpocock/skills установлены в `.zcode/skills/` (основное место ZCode) и `.agents/skills/` (для других агентов — VS Code/Copilot) + `skills-lock.json`; конфигурация — `docs/agents/` (трекер — локальные markdown-файлы в `.scratch/`, канонические лейблы триажа, single-context доки); язык домена — `GLOSSARY.md`. ZCode подхватывает навыки в новой сессии
 
@@ -34,7 +35,7 @@ Next.js 16.4.6 (App Router, Turbopack, Cache Components, Partial Prefetching, Re
 - 5 категорий: Пицца, Шаурма, Сеты, Напитки, Десерты
 - 24 товара: 8 пицц (Маргарита 590₽…), 6 шаурм (300–450₽), 3 сета («Шаурма для двоих» 690₽, «Двойная пицца» 1290₽, «Компания» 1990₽ — состав в `set_items`), 4 напитка, 3 десерта; у всех `imageUrl: null` — до этапа 5 показывается emoji-фолбэк
 - 4 акции: `SHAWARMA20` −20%, `COMBO150` −150₽, `PIZZA300` −300₽, «Счастливые часы −10%» (без кода, окно дат)
-- Аккаунты: **admin** `admin@food.local` / `admin1234` · **клиент** `client@food.local` / `client1234`
+- Аккаунты: **admin** `admin@food.local` / `admin1234` · **manager** `manager@food.local` / `manager1234` · **клиент** `client@food.local` / `client1234`
 - Деньги — в **копейках** (int); вывод через `formatPrice()` из `@/lib/format`
 
 ## 5. Технические грабли (обязательны к соблюдению)
@@ -47,7 +48,7 @@ Next.js 16.4.6 (App Router, Turbopack, Cache Components, Partial Prefetching, Re
 6. **ESLint**: jsx-a11y добавлять ТОЛЬКО правилами (`rules: jsxA11y.flatConfigs.recommended.rules`) — `eslint-config-next` уже регистрирует плагин, полная конфигурация даёт «Cannot redefine plugin jsx-a11y».
 7. **shadcn 4.x CLI**: `pnpm dlx shadcn@latest init -y -b radix -p nova --css-variables`. Пресет nova ожидает font-переменную `--font-sans` (Geist с cyrillic-сабсетом).
 8. **Темы**: next-themes (attribute=class, system); иконки переключателя — обе рендерятся, видимость через `dark:` классы (без mounted-состояния — React Compiler линт против set-state-in-effect).
-9. **proxy, не middleware** — `src/proxy.ts` (гард /admin по роли).
+9. **proxy, не middleware** — `src/proxy.ts` (гард /admin: роли admin|manager).
 10. **Заказ и корзина**: id заказа = uuid (неугадываемый) → трекинг доступен гостю; корзина — серверная (`carts`/`cart_items`), гостю — httpOnly-cookie `cart_id`, при логине слияние; состав заказа берётся из корзины в БД (клиентским спискам не доверять); цены снапшотятся из БД; промокод ревалидируется на сервере; запись в `db.transaction()`.
 11. **AI skills (mattpocock/skills)**: файлы — копии в `.zcode/skills/` (читает ZCode) и `.agents/skills/` (читают другие агенты); обновление — `npx skills@latest update`. Конфигурация навыков — `docs/agents/*.md`; термины домена — только через `GLOSSARY.md`. Трекер — локальные markdown-файлы (`.scratch/<feature>/`): `gh` CLI не нужен, спеки и тикеты коммитятся вместе с этапом. `.zcode/skills` важнее `.agents/skills` при обнаружении — копии идентичны, конфликта нет.
 12. **Миграции**: только drizzle-kit (`generate`/`migrate`), SQL-файлы коммитятся в репозиторий; `db:push` не используем.
@@ -62,10 +63,10 @@ Next.js 16.4.6 (App Router, Turbopack, Cache Components, Partial Prefetching, Re
 - [ ] `allowBuilds` в pnpm-workspace.yaml; конфиги (next с `output: 'standalone'`/eslint/drizzle pg/`.env.example`: DATABASE_URL, S3_ENDPOINT/S3_KEY/S3_SECRET/S3_BUCKET, AUTH_SECRET, AI-ключи); CLAUDE.md (→ указатель на AGENTS.md); README.md (roadmap обучения)
 - [ ] Docker: multi-stage Dockerfile (pnpm, standalone), `docker-compose.dev.yml` (postgres:17 + minio), `docker-compose.prod.yml` (app + postgres + minio)
 - [ ] shadcn init (radix/nova) + компоненты: button card input label textarea select badge dialog sheet separator sonner skeleton dropdown-menu table tabs switch
-- [ ] Схема Drizzle pg-core + `db/index.ts` (postgres-js) + миграции drizzle-kit (SQL в git) + идемпотентный сидер
-- [ ] better-auth: `lib/auth.ts` (роли, cookieCache 5 мин), `auth-client.ts`, `session.ts` (getSession/getAdminSession), `/api/auth/[...all]`
+- [ ] Схема Drizzle pg-core (`orders.paymentStatus` pending|paid — под этап 9) + `db/index.ts` (postgres-js) + миграции drizzle-kit (SQL в git) + идемпотентный сидер (admin/manager/client)
+- [ ] better-auth: `lib/auth.ts` (роли admin/manager/customer, cookieCache 5 мин), `auth-client.ts`, `session.ts` (getSession/getAdminSession), `/api/auth/[...all]`
 - [ ] `lib/format.ts` (formatPrice, formatDate, formatDateTime, STATUS_LABELS); queries: `getFullMenu`/`getProduct` (тег `menu`), `getActivePromotions` (кеш данных + окно на чтении, тег `promos`), orders без кеша; actions: корзина — add/setQty/remove (гостевая httpOnly cookie `cart_id`), `createOrder`, `applyPromoCode`
-- [ ] Каркас магазина: layout (lang=ru, skip-link, ThemeProvider, Toaster, Geist latin+cyrillic), header/footer, product-card/details, promo-card; маршруты `/`, `/menu`, `/product/[id]`, `@modal` (intercepting → модалка)
+- [ ] Каркас магазина: layout (lang=ru, skip-link, ThemeProvider, Toaster, Geist latin+cyrillic), header/footer, product-card/details, promo-card; маршруты `/` (**меню на главной**: фильтры `?category`/`?q`), `/product/[id]` (fallback), `@modal` (перехват с главной → модалка)
 - [ ] Проверка: lint чист, `db:seed` идемпотентен, `GET /` → 200, `docker build` проходит, `docker compose up` поднимается; точные значения профилей `cacheLife` сверены с `node_modules/next/dist/docs/`
 - [ ] Коммит «Этап 0»
 
@@ -87,12 +88,12 @@ Next.js 16.4.6 (App Router, Turbopack, Cache Components, Partial Prefetching, Re
 
 - [ ] `(auth)/login`, `(auth)/register` (better-auth email/password, формы с aria-ошибками)
 - [ ] Слияние гостевой корзины с пользовательской при входе
-- [ ] `(shop)/orders/page.tsx` (история, гард по сессии)
+- [ ] `(shop)/orders/page.tsx` — **закрытая зона пользователя**: текущий заказ + история (гард по сессии; раскладка — при описании layout)
 - **Готово, когда**: вход обоими демо-аккаунтами, история видна только владельцу, гостевая корзина доехала до аккаунта
 
 ### Этап 4 — Трекинг заказа
 
-- [ ] `(shop)/orders/[id]/page.tsx`: таймлайн статусов (иконка+текст, не только цвет)
+- [ ] `(shop)/orders/[id]/page.tsx` (доступ: владелец по сессии или uuid-ссылка): таймлайн статусов (иконка+текст, не только цвет)
 - [ ] `GET /api/orders/[id]` + ETag (304 при неизменном статусе) + polling ~5 с; `loading.tsx`, `not-found.tsx`, `error.tsx`
 - **Готово, когда**: гость по uuid-ссылке видит статус, обновляющийся без перезагрузки
 
@@ -101,8 +102,8 @@ Next.js 16.4.6 (App Router, Turbopack, Cache Components, Partial Prefetching, Re
 - [ ] `lib/actions/products.ts` + `promotions.ts` + `updateOrderStatus` (requireAdmin через getAdminSession, revalidateTag)
 - [ ] Картинки: S3-клиент через env (`S3_ENDPOINT/S3_KEY/S3_SECRET/S3_BUCKET`), upload — FormData → sharp → PutObject; `next/image` + `remotePatterns` на endpoint; emoji — фолбэк при пустом `imageUrl`
 - [ ] `/admin` (заказы, useOptimistic + смена статуса), `/admin/products` (CRUD single+set, редактор состава, upload фото), `/admin/promotions`
-- [ ] `src/proxy.ts` — гард /admin по роли (matcher)
-- **Готово, когда**: гость на `/admin` → редирект; CRUD сета с составом работает; фото загружается и показывается на карточке; смена статуса мгновенно видна на трекинге
+- [ ] `src/proxy.ts` — гард /admin: роли admin|manager (matcher); права manager внутри — при описании layout
+- **Готово, когда**: гость на `/admin` → редирект; admin и manager входят; CRUD сета с составом работает; фото загружается и показывается на карточке; смена статуса мгновенно видна на трекинге
 
 ### Этап 6 — AI-ассистент (независим от этапов 1–5, можно двигать)
 
@@ -122,6 +123,12 @@ Next.js 16.4.6 (App Router, Turbopack, Cache Components, Partial Prefetching, Re
 
 - [ ] Коммит на каждый этап, push в `origin/master`
 
+### Этап 9 — Оплата (фейковый провайдер)
+
+- [ ] Мок-страница `(shop)/orders/[id]/pay/page.tsx` (доступ — владелец по сессии или uuid): «платёжная форма», кнопка «Оплатить» с задержкой 2–3 с → server action `payMockOrder` → `paymentStatus: paid` → редирект на трекинг
+- [ ] Чекаут: выбор «карта (фейк) / при получении»; поток повторяет реальный (редирект → оплата → возврат на трекинг) — замена на настоящего провайдера без переделки UI и схемы; вебхуков нет
+- **Готово, когда**: «заказ с картой → мок-оплата → на трекинге „оплачен“; при получении — заказ сразу подтверждён»
+
 ## 7. A11y-чек-лист (на каждый модуль)
 
 - Landmarks, один h1, skip-link (в layout)
@@ -134,13 +141,13 @@ Next.js 16.4.6 (App Router, Turbopack, Cache Components, Partial Prefetching, Re
 
 ## 8. Функциональная спецификация (кратко)
 
-- **Happy path клиента**: главная (hero + акции + популярное) → меню (фильтры category/q через searchParams) → модалка товара (intercepting route) → корзина (серверная: `carts`/`cart_items`; гостю — httpOnly cookie `cart_id`, при логине слияние) → промокод (поле на корзине) → чекаут (контакты; состав берётся из БД) → заказ (uuid) → трекинг `новый → подтверждён → готовится → в пути → доставлен` (+ `отменён`), polling ~5 с (ETag → 304)
-- **API**: Route Handlers — ровно 4: `GET /api/orders/[id]`, `GET /api/promotions`, `POST /api/chat`, `/api/auth/[...all]` (sign-up/email, sign-in/email, sign-out, get-session). Server Actions — корзина (add/setQty/remove), `createOrder`, `applyPromoCode`, `updateOrderStatus`, CRUD products (вкл. set_items)/categories/promotions. Каталог/акции/заказы читаются в RSC из БД напрямую, без HTTP.
+- **Happy path клиента**: главная `/` — **меню на ней** (фильтры category/q через searchParams; раскладка секций — при описании layout) → модалка товара (intercepting, открывается по ссылке `/product/[id]` с главной) → корзина (серверная: `carts`/`cart_items`; гостю — httpOnly cookie `cart_id`, при логине слияние) → промокод (поле на корзине) → чекаут (контакты + способ оплаты) → заказ (uuid) → трекинг `новый → подтверждён → готовится → в пути → доставлен` (+ `отменён`), polling ~5 с (ETag → 304). Закрытые страницы: `/admin/*` — admin+manager; `/orders`, `/orders/[id]` (+ pay) — владелец по сессии, гостю — uuid-ссылка
+- **API**: Route Handlers — ровно 4: `GET /api/orders/[id]`, `GET /api/promotions`, `POST /api/chat`, `/api/auth/[...all]` (sign-up/email, sign-in/email, sign-out, get-session). Server Actions — корзина (add/setQty/remove), `createOrder`, `applyPromoCode`, `updateOrderStatus`, `payMockOrder` (этап 9), CRUD products (вкл. set_items)/categories/promotions. Каталог/акции/заказы читаются в RSC из БД напрямую, без HTTP.
 - **Каталог**: `type single|set`, состав сетов в `set_items`, выгода — зачёркнутая старая цена, фото из MinIO (`imageUrl`) или emoji-фолбэк
 
 ## 9. Roadmap после MVP
 
-Оплаты, модификаторы (размер/тесто), повтор заказа, автопрогресс статусов, автотесты (vitest + Playwright), managed Postgres при serverless-переезде, managed S3/R2 вместо MinIO.
+Настоящий платёжный провайдер (замена мока этапа 9), уведомления (email/push/SMS), автопрогресс статусов, роли персонала (кухня/курьер, KDS), модификаторы (размер/тесто) и слоты/зоны доставки, повтор заказа, лояльность, TLS/домен (Caddy), мониторинг ошибок (Sentry/GlitchTip), бэкапы Postgres, rate limiting, e2e-тесты (vitest + Playwright), managed Postgres при serverless-переезде, managed S3/R2 вместо MinIO.
 
 ## 10. Правила ведения этого файла
 
@@ -154,17 +161,17 @@ Next.js 16.4.6 (App Router, Turbopack, Cache Components, Partial Prefetching, Re
 
 **`src/app/layout.tsx`:** lang="ru", skip-to-content, ThemeProvider, Toaster, Geist (latin+cyrillic, переменная `--font-sans`).
 
-**Auth:** `api/auth/[...all]/route.ts` — better-auth handler (toNextJsHandler); `lib/auth.ts` (betterAuth + drizzleAdapter, role additionalField с `input: false`, cookieCache 5 мин); `lib/auth-client.ts`; `lib/session.ts` (getSession, getAdminSession); `lib/format.ts` (formatPrice, formatDate, formatDateTime, STATUS_LABELS). Гостевая корзина — httpOnly-cookie `cart_id` (uuid); при логине — слияние в пользовательскую.
+**Auth:** `api/auth/[...all]/route.ts` — better-auth handler (toNextJsHandler); `lib/auth.ts` (betterAuth + drizzleAdapter, роли admin/manager/customer — additionalField с `input: false`, cookieCache 5 мин); `lib/auth-client.ts`; `lib/session.ts` (getSession, getAdminSession); `lib/format.ts` (formatPrice, formatDate, formatDateTime, STATUS_LABELS). Гостевая корзина — httpOnly-cookie `cart_id` (uuid); при логине — слияние в пользовательскую.
 
-**БД (pg-core):** `db/schema.ts` — user/session/account/verification + categories, products (type single|set, emoji, `imageUrl` nullable, price в копейках int), set_items, promotions (discountType percent|fixed, code nullable, startsAt/endsAt, isActive), carts (uuid, user_id nullable, promo_id nullable, timestamps), cart_items (cart_id, product_id, qty, уникальность пары), orders (uuid, status, fulfillment, promoId, discountAmount), order_items (снапшот); типы + `ORDER_STATUSES`. `db/index.ts` — postgres-js. Миграции — drizzle-kit, SQL-файлы в git. `db/seed.ts` — идемпотентный.
+**БД (pg-core):** `db/schema.ts` — user/session/account/verification + categories, products (type single|set, emoji, `imageUrl` nullable, price в копейках int), set_items, promotions (discountType percent|fixed, code nullable, startsAt/endsAt, isActive), carts (uuid, user_id nullable, promo_id nullable, timestamps), cart_items (cart_id, product_id, qty, уникальность пары), orders (uuid, status, fulfillment, promoId, discountAmount, paymentStatus pending|paid — под этап 9), order_items (снапшот); типы + `ORDER_STATUSES`. `db/index.ts` — postgres-js. Миграции — drizzle-kit, SQL-файлы в git. `db/seed.ts` — идемпотентный.
 
 **Запросы:** `queries/menu.ts` — `getFullMenu()` (`'use cache'` + `cacheLife('hours')` + тег `'menu'`): категории+товары+составы сетов, тип `MenuProduct` c setComponents/setOldPrice; `getProduct(id)`. `queries/promotions.ts` — `getCachedActivePromotions()` (`'use cache'` + `cacheLife('hours')` + тег `'promos'`, фильтр isActive — данные без времени) + обёртка `getActivePromotions()` без кеша: `new Date()` + фильтр окна startsAt/endsAt на каждом чтении. `queries/cart.ts` — `getCart(cartId)` — динамика, без `'use cache'` (персональные данные). `queries/orders.ts` — без кеша: `getOrderById`, `getUserOrders`, `getAllOrders`.
 
-**Действия:** `actions/cart.ts` (`'use server'`): addToCart/setQty/removeFromCart — cookie гостя либо корзина пользователя, пересчёт инвалидирует через revalidate текущего маршрута. `actions/orders.ts` (`'use server'`): `createOrder(payload)` — только контакты; состав из корзины в БД, снапшот цен из БД, ревалидация промокода, транзакция, `revalidateTag('orders')`, результат `{ ok, data: { orderId } }`; `applyPromoCode(code)` — валидация, promo_id на корзину. Тип `ActionResult<T>`.
+**Действия:** `actions/cart.ts` (`'use server'`): addToCart/setQty/removeFromCart — cookie гостя либо корзина пользователя, пересчёт инвалидирует через revalidate текущего маршрута. `actions/orders.ts` (`'use server'`): `createOrder(payload)` — только контакты; состав из корзины в БД, снапшот цен из БД, ревалидация промокода, транзакция, `revalidateTag('orders')`, результат `{ ok, data: { orderId } }`; `applyPromoCode(code)` — валидация, promo_id на корзину; `payMockOrder(orderId)` (этап 9) — доступ как у трекинга (сессия владельца или uuid). Тип `ActionResult<T>`.
 
 **Компоненты:** theme-provider, theme-toggle; `shop/`: header (клиентский: навигация Меню/Акции/Ассистент, ThemeToggle, AuthArea на useSession, CartButton — бейдж как динамический фрагмент в Suspense), footer, add-to-cart-button (server action + useOptimistic + toast), product-card (серверный: бейдж выгоды, зачёркнутая старая цена, `<Image>` по imageUrl или emoji-фолбэк), product-details (клиентский: режим модалки asDialog через router.back() + режим страницы, степпер количества), promo-card (+formatDiscount).
 
-**Маршруты:** `(shop)/layout.tsx` (рендерит `{children}` + `{modal}`); `(shop)/page.tsx` (hero + «Акции недели» в Suspense + «Популярное»); `(shop)/menu/page.tsx` (searchParams в Suspense; MenuFilters — серверный, нативная GET-форма поиска + пилюли категорий; группировка по категориям); `(shop)/@modal/default.tsx`; `(shop)/@modal/(.)product/[id]/page.tsx` (intercepting → модалка); `(shop)/product/[id]/page.tsx` (fallback + generateMetadata).
+**Маршруты:** `(shop)/layout.tsx` (рендерит `{children}` + `{modal}`); `(shop)/page.tsx` — **главная = меню** (searchParams `?category`/`?q` в Suspense; MenuFilters — серверный, нативная GET-форма поиска + пилюли категорий; группировка по категориям; секции над меню — hero/«Акции недели» в Suspense/«Популярное» — раскладка при описании layout); `(shop)/@modal/default.tsx`; `(shop)/@modal/(.)product/[id]/page.tsx` (intercepting → модалка товара, открывается по ссылке `/product/[id]` с главной); `(shop)/product/[id]/page.tsx` (fallback + generateMetadata); закрытая зона пользователя: `(shop)/orders/page.tsx` (текущий заказ + история, гард по сессии), `(shop)/orders/[id]/page.tsx` (трекинг; владелец по сессии или uuid), `(shop)/orders/[id]/pay/page.tsx` — мок-оплата (этап 9, тот же доступ).
 
 **Компоненты shadcn:** button card input label textarea select badge dialog sheet separator sonner skeleton dropdown-menu table tabs switch.
 
