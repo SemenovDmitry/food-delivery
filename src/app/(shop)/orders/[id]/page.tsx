@@ -31,7 +31,7 @@ export default function OrderReceiptPage({ params }: ReceiptPageProps) {
 
 async function ReceiptContent({ params }: { params: Promise<{ id: string }> }) {
 	const { id } = await params
-	// кривой uuid роняет запрос в Postgres — отсекаем до БД (§5.23)
+	// кривой uuid роняет запрос в Postgres — отсекаем до БД (§5.24)
 	if (!isUuid(id)) notFound()
 
 	const details = await getOrderById(id)

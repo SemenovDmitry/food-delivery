@@ -88,7 +88,7 @@ export async function getProduct(id: string): Promise<MenuProduct | null> {
 	cacheLife('hours')
 	cacheTag('menu')
 
-	// невалидный uuid (обрезанная ссылка) роняет запрос в Postgres — отсекаем до БД (§5.23)
+	// невалидный uuid (обрезанная ссылка) роняет запрос в Postgres — отсекаем до БД (§5.24)
 	if (!isUuid(id)) return null
 
 	const [product] = await db.select().from(products).where(eq(products.id, id))
