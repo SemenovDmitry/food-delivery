@@ -2,8 +2,8 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { emailOTP, phoneNumber } from "better-auth/plugins";
 import { db } from "@/db";
-import { notifications } from "@/db/schema";
 import * as schema from "@/db/schema";
+import { notifications } from "@/db/schema";
 import { sendEmail } from "@/lib/email";
 
 /**
@@ -39,8 +39,7 @@ export const auth = betterAuth({
       verifyOTP: async ({ code }) => code === DEMO_SMS_CODE,
       signUpOnVerification: {
         // временный email для better-auth; настоящий email собирает UI этапа 3
-        getTempEmail: (phoneNumber) =>
-          `phone-${phoneNumber.replace(/\D/g, "")}@temp.food.local`,
+        getTempEmail: (phoneNumber) => `phone-${phoneNumber.replace(/\D/g, "")}@temp.food.local`,
         getTempName: (phoneNumber) => phoneNumber,
       },
     }),

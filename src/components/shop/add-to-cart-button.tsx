@@ -3,8 +3,8 @@
 import { Loader2, ShoppingBag } from "lucide-react";
 import { useOptimistic, useTransition } from "react";
 import { toast } from "sonner";
-import { addToCart } from "@/lib/actions/cart";
 import { Button } from "@/components/ui/button";
+import { addToCart } from "@/lib/actions/cart";
 
 type AddToCartButtonProps = {
   productId: string;

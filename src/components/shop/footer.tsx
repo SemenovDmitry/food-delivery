@@ -1,6 +1,6 @@
-import { Suspense } from "react";
-import Link from "next/link";
 import { cacheLife } from "next/cache";
+import Link from "next/link";
+import { Suspense } from "react";
 
 /** Год в кеше — `new Date()` разрешён только внутри 'use cache' (§5.3) */
 async function FooterYear() {

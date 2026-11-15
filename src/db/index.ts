@@ -7,8 +7,7 @@ import * as schema from "./schema";
  * Dev-фолбэк совпадает с docker-compose.dev.yml (хост-порт 5560, §5.20).
  */
 const connectionString =
-  process.env.DATABASE_URL ??
-  "postgresql://postgres:postgres@localhost:5560/food_delivery";
+  process.env.DATABASE_URL ?? "postgresql://postgres:postgres@localhost:5560/food_delivery";
 
 // пул postgres-js; drizzle-kit использует своё соединение из drizzle.config
 const client = postgres(connectionString, { max: 10 });

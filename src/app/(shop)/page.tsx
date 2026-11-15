@@ -1,14 +1,14 @@
-import { Suspense } from "react";
 import Link from "next/link";
 import { connection } from "next/server";
-import { getFullMenu, type MenuCategory } from "@/queries/menu";
-import { getActivePromotions } from "@/queries/promotions";
+import { Suspense } from "react";
 import { MenuNav } from "@/components/shop/menu-nav";
 import { ProductCard } from "@/components/shop/product-card";
 import { PromoCard } from "@/components/shop/promo-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getFullMenu, type MenuCategory } from "@/queries/menu";
+import { getActivePromotions } from "@/queries/promotions";
 
 /**
  * Главная = меню (§6/§8): «Акции недели» в Suspense, sticky-навигация с scrollspy,
@@ -43,9 +43,7 @@ async function PromotionsRibbon() {
   const promos = await getActivePromotions();
 
   if (promos.length === 0) {
-    return (
-      <p className="py-4 text-sm text-muted-foreground">Сейчас активных акций нет</p>
-    );
+    return <p className="py-4 text-sm text-muted-foreground">Сейчас активных акций нет</p>;
   }
 
   return (
@@ -83,22 +81,24 @@ async function MenuSection({ searchParams }: { searchParams: SearchParams }) {
       <div className="mx-auto max-w-6xl px-4 pb-16">
         <h1 className="sr-only">Меню доставки</h1>
 
-        {/* Нативная GET-форма поиска (§11) */}
-        <form action="/" method="get" role="search" className="flex gap-2 py-4">
-          <Input
-            type="search"
-            name="q"
-            defaultValue={query}
-            aria-label="Поиск по меню"
-            placeholder="Найти в меню…"
-          />
-          <Button type="submit">Найти</Button>
-          {query ? (
-            <Button type="button" variant="ghost" asChild>
-              <Link href="/">Сбросить</Link>
-            </Button>
-          ) : null}
-        </form>
+        {/* Нативная GET-форма поиска (§11); <search> — семантический лендмарк */}
+        <search className="flex gap-2 py-4">
+          <form action="/" method="get" className="flex flex-1 gap-2">
+            <Input
+              type="search"
+              name="q"
+              defaultValue={query}
+              aria-label="Поиск по меню"
+              placeholder="Найти в меню…"
+            />
+            <Button type="submit">Найти</Button>
+            {query ? (
+              <Button type="button" variant="ghost" asChild>
+                <Link href="/">Сбросить</Link>
+              </Button>
+            ) : null}
+          </form>
+        </search>
 
         <p aria-live="polite" className="min-h-5 text-sm text-muted-foreground">
           {query

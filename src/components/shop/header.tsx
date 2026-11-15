@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { authClient } from "@/lib/auth-client";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
+import { authClient } from "@/lib/auth-client";
 
 /**
  * Клиентский header (§11): навигация + ThemeToggle + AuthArea на authClient.useSession().
@@ -38,11 +38,7 @@ export function Header() {
           ) : session ? (
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">{session.user.name}</span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => authClient.signOut()}
-              >
+              <Button variant="outline" size="sm" onClick={() => authClient.signOut()}>
                 Выйти
               </Button>
             </div>

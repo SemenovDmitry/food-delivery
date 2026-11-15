@@ -1,19 +1,14 @@
 "use client";
 
+import { Minus, Plus } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Minus, Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { PriceLine } from "@/components/shop/price-line";
-import { formatPrice } from "@/lib/format";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { MAX_QTY } from "@/lib/constants";
+import { formatPrice } from "@/lib/format";
 import type { MenuProduct } from "@/queries/menu";
 
 type ProductDetailsProps = {
@@ -49,7 +44,6 @@ export function ProductDetails({ product, asDialog = false }: ProductDetailsProp
 
       <PriceLine price={product.price} oldPrice={product.setOldPrice} large />
 
-
       {product.description ? (
         <p className="text-sm text-muted-foreground">{product.description}</p>
       ) : null}
@@ -71,9 +65,7 @@ export function ProductDetails({ product, asDialog = false }: ProductDetailsProp
 
       {/* Степпер количества; значение озвучивается через aria-live */}
       <div className="flex items-center gap-3">
-        <span id="qty-label" className="text-sm text-muted-foreground">
-          Количество
-        </span>
+        <span className="text-sm text-muted-foreground">Количество</span>
         <Button
           variant="outline"
           size="icon"
@@ -83,11 +75,7 @@ export function ProductDetails({ product, asDialog = false }: ProductDetailsProp
         >
           <Minus aria-hidden className="size-4" />
         </Button>
-        <span
-          aria-live="polite"
-          aria-labelledby="qty-label"
-          className="w-8 text-center font-semibold"
-        >
+        <span aria-live="polite" className="w-8 text-center font-semibold">
           {qty}
         </span>
         <Button

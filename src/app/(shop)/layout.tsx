@@ -1,5 +1,5 @@
-import { Header } from "@/components/shop/header";
 import { Footer } from "@/components/shop/footer";
+import { Header } from "@/components/shop/header";
 
 /** Рендерит {children} + слот {modal} — перехват /product/[id] с главной (§11) */
 export default function ShopLayout({

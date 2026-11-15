@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { Suspense } from "react";
 import { notFound } from "next/navigation";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Suspense } from "react";
 import { ProductDetails } from "@/components/shop/product-details";
+import { Skeleton } from "@/components/ui/skeleton";
 import { getProduct } from "@/queries/menu";
 
 type ProductPageProps = PageProps<"/product/[id]">;

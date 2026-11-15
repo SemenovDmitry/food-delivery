@@ -30,13 +30,7 @@ export type OrderStatus = (typeof ORDER_STATUSES)[number];
 export const ORDER_PAYMENT_STATUSES = ["pending", "paid"] as const;
 export type OrderPaymentStatus = (typeof ORDER_PAYMENT_STATUSES)[number];
 
-export const PAYMENT_STATUSES = [
-  "created",
-  "processing",
-  "paid",
-  "failed",
-  "cancelled",
-] as const;
+export const PAYMENT_STATUSES = ["created", "processing", "paid", "failed", "cancelled"] as const;
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
 
 export const NOTIFICATION_STATUSES = ["pending", "sent", "failed"] as const;

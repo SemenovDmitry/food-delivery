@@ -23,19 +23,19 @@ Mailpit (письма): http://localhost:8025 · MinIO: http://localhost:9000
 
 ## Roadmap обучения
 
-| Этап | Что | Фича Next.js |
-|------|-----|--------------|
-| 0 | Базовая кодовая база, Docker, схема, каркас магазина | Cache Components, React Compiler, intercepting routes |
-| 1 | Корзина и чекаут (серверная корзина) | Server Actions, useOptimistic, dynamic fragments |
-| 2 | Акции | ETag, Cache-Control, кеш-теги |
-| 3 | Auth + история заказов | better-auth, слияние корзины |
-| 4 | Трекинг заказа | polling + ETag 304, error/loading/not-found |
-| 5 | Админка + картинки | MinIO/S3, next/image, proxy-гард |
-| 6 | AI-ассистент | AI SDK 7, streaming, tools |
-| 7 | Верификация | lint/build, Lighthouse a11y |
-| 8 | Git | коммиты по этапам |
-| 9 | Оплата (мок-провайдер с webhook-контрактом) | Route Handlers, HMAC |
-| 10 | Уведомления (аутбокс) + автоджоба | транзакционный аутбокс |
-| 11 | Ops-харднинг | health, структурные логи, security-заголовки |
+| Этап | Что                                                  | Фича Next.js                                          |
+| ---- | ---------------------------------------------------- | ----------------------------------------------------- |
+| 0    | Базовая кодовая база, Docker, схема, каркас магазина | Cache Components, React Compiler, intercepting routes |
+| 1    | Корзина и чекаут (серверная корзина)                 | Server Actions, useOptimistic, dynamic fragments      |
+| 2    | Акции                                                | ETag, Cache-Control, кеш-теги                         |
+| 3    | Auth + история заказов                               | better-auth, слияние корзины                          |
+| 4    | Трекинг заказа                                       | polling + ETag 304, error/loading/not-found           |
+| 5    | Админка + картинки                                   | MinIO/S3, next/image, proxy-гард                      |
+| 6    | AI-ассистент                                         | AI SDK 7, streaming, tools                            |
+| 7    | Верификация                                          | lint/build, Lighthouse a11y                           |
+| 8    | Git                                                  | коммиты по этапам                                     |
+| 9    | Оплата (мок-провайдер с webhook-контрактом)          | Route Handlers, HMAC                                  |
+| 10   | Уведомления (аутбокс) + автоджоба                    | транзакционный аутбокс                                |
+| 11   | Ops-харднинг                                         | health, структурные логи, security-заголовки          |
 
 План и статус ведутся в [AGENTS.md](./AGENTS.md); термины домена — [GLOSSARY.md](./GLOSSARY.md).

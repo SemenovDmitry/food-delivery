@@ -1,8 +1,8 @@
-import { cacheLife, cacheTag } from "next/cache";
 import { asc, eq } from "drizzle-orm";
+import { cacheLife, cacheTag } from "next/cache";
 import { db } from "@/db";
-import { categories, products, setItems } from "@/db/schema";
 import type { Product } from "@/db/schema";
+import { categories, products, setItems } from "@/db/schema";
 
 export type MenuSetComponent = {
   productId: string;

@@ -1,10 +1,10 @@
 import "server-only";
 
-import { cookies } from "next/headers";
 import { and, asc, eq } from "drizzle-orm";
+import { cookies } from "next/headers";
 import { db } from "@/db";
-import { cartItems, carts, products } from "@/db/schema";
 import type { Cart, Product } from "@/db/schema";
+import { cartItems, carts, products } from "@/db/schema";
 import { getSession } from "@/lib/session";
 
 export const CART_COOKIE = "cart_id";
@@ -22,15 +22,9 @@ export async function getOrCreateCart(): Promise<Cart> {
   const cookieStore = await cookies();
 
   if (session) {
-    const [userCart] = await db
-      .select()
-      .from(carts)
-      .where(eq(carts.userId, session.user.id));
+    const [userCart] = await db.select().from(carts).where(eq(carts.userId, session.user.id));
     if (userCart) return userCart;
-    const [created] = await db
-      .insert(carts)
-      .values({ userId: session.user.id })
-      .returning();
+    const [created] = await db.insert(carts).values({ userId: session.user.id }).returning();
     return created;
   }
 

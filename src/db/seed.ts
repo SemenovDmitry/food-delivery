@@ -1,14 +1,7 @@
-import { and, eq } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
+import { and, eq } from "drizzle-orm";
 import { db } from "./index";
-import {
-  categories,
-  products,
-  promotions,
-  setItems,
-  user,
-  type Product,
-} from "./schema";
+import { categories, type Product, products, promotions, setItems, user } from "./schema";
 
 /**
  * Идемпотентный сидер: повторный запуск не создаёт дублей.
@@ -30,13 +23,38 @@ const SEED_CATEGORIES: { slug: string; name: string; products: SeedProduct[] }[]
     slug: "pizza",
     name: "Пицца",
     products: [
-      { name: "Маргарита", price: 59000, emoji: "🍕", description: "Томатный соус, моцарелла, базилик" },
-      { name: "Пепперони", price: 69000, emoji: "🍕", description: "Пепперони, моцарелла, томатный соус" },
-      { name: "Четыре сыра", price: 74000, emoji: "🧀", description: "Моцарелла, дорблю, пармезан, чеддер" },
+      {
+        name: "Маргарита",
+        price: 59000,
+        emoji: "🍕",
+        description: "Томатный соус, моцарелла, базилик",
+      },
+      {
+        name: "Пепперони",
+        price: 69000,
+        emoji: "🍕",
+        description: "Пепперони, моцарелла, томатный соус",
+      },
+      {
+        name: "Четыре сыра",
+        price: 74000,
+        emoji: "🧀",
+        description: "Моцарелла, дорблю, пармезан, чеддер",
+      },
       { name: "Гавайская", price: 72000, emoji: "🍍", description: "Курица, ананасы, моцарелла" },
       { name: "Дьявол", price: 79000, emoji: "🌶️", description: "Салями, халапеньо, чили-соус" },
-      { name: "Ветчина и грибы", price: 68000, emoji: "🍄", description: "Ветчина, шампиньоны, моцарелла" },
-      { name: "Барбекю", price: 75000, emoji: "🍖", description: "Свинина барбекю, соус барбекю, красный лук" },
+      {
+        name: "Ветчина и грибы",
+        price: 68000,
+        emoji: "🍄",
+        description: "Ветчина, шампиньоны, моцарелла",
+      },
+      {
+        name: "Барбекю",
+        price: 75000,
+        emoji: "🍖",
+        description: "Свинина барбекю, соус барбекю, красный лук",
+      },
       { name: "Веган", price: 64000, emoji: "🌱", description: "Овощи, веган-сыр, томатный соус" },
     ],
   },
@@ -44,8 +62,18 @@ const SEED_CATEGORIES: { slug: string; name: string; products: SeedProduct[] }[]
     slug: "shawarma",
     name: "Шаурма",
     products: [
-      { name: "Классическая", price: 34000, emoji: "🌯", description: "Курица, свежие овощи, белый соус" },
-      { name: "Куриная", price: 32000, emoji: "🌯", description: "Куриное филе, лаваш, соус чесночный" },
+      {
+        name: "Классическая",
+        price: 34000,
+        emoji: "🌯",
+        description: "Курица, свежие овощи, белый соус",
+      },
+      {
+        name: "Куриная",
+        price: 32000,
+        emoji: "🌯",
+        description: "Куриное филе, лаваш, соус чесночный",
+      },
       { name: "Сырная", price: 36000, emoji: "🧀", description: "Курица, двойной сыр, томаты" },
       { name: "Острая", price: 35000, emoji: "🌶️", description: "Говядина, острый соус, лук" },
       { name: "Большая", price: 45000, emoji: "🌯", description: "Двойная начинка, 30 см" },
@@ -57,9 +85,27 @@ const SEED_CATEGORIES: { slug: string; name: string; products: SeedProduct[] }[]
     name: "Сеты",
     products: [
       // старая цена = сумма цен компонентов (setOldPrice — computed, §11)
-      { name: "Шаурма для двоих", price: 69000, emoji: "🥡", type: "set", description: "2 шаурмы классические + 2 колы 0.5" },
-      { name: "Двойная пицца", price: 109000, emoji: "🥡", type: "set", description: "Маргарита + Пепперони" },
-      { name: "Компания", price: 199000, emoji: "🍱", type: "set", description: "2 пиццы + 2 шаурмы + 4 колы 0.5" },
+      {
+        name: "Шаурма для двоих",
+        price: 69000,
+        emoji: "🥡",
+        type: "set",
+        description: "2 шаурмы классические + 2 колы 0.5",
+      },
+      {
+        name: "Двойная пицца",
+        price: 109000,
+        emoji: "🥡",
+        type: "set",
+        description: "Маргарита + Пепперони",
+      },
+      {
+        name: "Компания",
+        price: 199000,
+        emoji: "🍱",
+        type: "set",
+        description: "2 пиццы + 2 шаурмы + 4 колы 0.5",
+      },
     ],
   },
   {
@@ -153,10 +199,7 @@ async function upsertProducts(
   seedProducts: SeedProduct[],
 ): Promise<Map<string, Product>> {
   const result = new Map<string, Product>();
-  const existing = await db
-    .select()
-    .from(products)
-    .where(eq(products.categoryId, categoryId));
+  const existing = await db.select().from(products).where(eq(products.categoryId, categoryId));
   const byName = new Map(existing.map((p) => [p.name, p]));
 
   for (const sp of seedProducts) {
@@ -205,7 +248,7 @@ async function seed() {
   // Проход 2: составы сетов — пересоздание (идемпотентно); компоненты из любых категорий
   for (const setDef of SEED_SET_ITEMS) {
     const set = globalProducts.get(setDef.setName);
-    if (!set || set.type !== "set") continue;
+    if (set?.type !== "set") continue;
     await db.delete(setItems).where(eq(setItems.setId, set.id));
     for (const item of setDef.items) {
       const component = globalProducts.get(item.productName);

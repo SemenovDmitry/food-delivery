@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
-import { formatDateTime, formatDiscount } from "@/lib/format";
 import type { Promotion } from "@/db/schema";
+import { formatDateTime, formatDiscount } from "@/lib/format";
 
 export function PromoCard({ promo }: { promo: Promotion }) {
   return (

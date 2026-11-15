@@ -1,8 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
-import type { MenuProduct } from "@/queries/menu";
 import { AddToCartButton } from "@/components/shop/add-to-cart-button";
 import { PriceLine } from "@/components/shop/price-line";
+import type { MenuProduct } from "@/queries/menu";
 
 /**
  * Серверная карточка товара: фото из MinIO или emoji-фолбэк,
@@ -31,10 +31,7 @@ export function ProductCard({ product }: { product: MenuProduct }) {
       </Link>
       <div className="flex flex-1 flex-col gap-1 p-3">
         <h3 className="font-semibold">
-          <Link
-            href={`/product/${product.id}`}
-            className="transition-colors hover:text-primary"
-          >
+          <Link href={`/product/${product.id}`} className="transition-colors hover:text-primary">
             {product.name}
           </Link>
         </h3>

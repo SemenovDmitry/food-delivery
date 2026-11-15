@@ -1,16 +1,14 @@
-import { Suspense } from "react";
 import { notFound } from "next/navigation";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Suspense } from "react";
 import { ProductDetails } from "@/components/shop/product-details";
+import { Skeleton } from "@/components/ui/skeleton";
 import { getProduct } from "@/queries/menu";
 
 /**
  * Intercepting route: перехват /product/[id] с главной → модалка товара (§8).
  * params — динамическое чтение: оболочка в Suspense, await params — внизу (§5.3).
  */
-export default function InterceptedProductPage({
-  params,
-}: PageProps<"/product/[id]">) {
+export default function InterceptedProductPage({ params }: PageProps<"/product/[id]">) {
   return (
     <Suspense fallback={<ProductDetailsSkeleton />}>
       <InterceptedProduct params={params} />
@@ -18,11 +16,7 @@ export default function InterceptedProductPage({
   );
 }
 
-async function InterceptedProduct({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+async function InterceptedProduct({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const product = await getProduct(id);
   if (!product) notFound();

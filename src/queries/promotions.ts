@@ -1,9 +1,9 @@
+import { asc, eq } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 import { connection } from "next/server";
-import { asc, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { promotions } from "@/db/schema";
 import type { Promotion } from "@/db/schema";
+import { promotions } from "@/db/schema";
 import { isPromoInWindow } from "@/lib/promo";
 
 /**

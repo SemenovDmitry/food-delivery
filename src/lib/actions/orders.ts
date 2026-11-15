@@ -52,11 +52,8 @@ export async function createOrder(
   // Ревалидация промокода на сервере: isActive + окно дат (§5.3)
   let promo: typeof promotions.$inferSelect | null = null;
   if (cart.promoId) {
-    const [found] = await db
-      .select()
-      .from(promotions)
-      .where(eq(promotions.id, cart.promoId));
-    if (found && found.isActive && isPromoInWindow(found, new Date())) {
+    const [found] = await db.select().from(promotions).where(eq(promotions.id, cart.promoId));
+    if (found?.isActive && isPromoInWindow(found, new Date())) {
       promo = found;
     }
   }
@@ -111,17 +108,12 @@ export async function createOrder(
 }
 
 /** applyPromoCode: валидация на сервере, promo_id на корзину */
-export async function applyPromoCode(
-  code: string,
-): Promise<ActionResult<{ name: string }>> {
+export async function applyPromoCode(code: string): Promise<ActionResult<{ name: string }>> {
   const normalized = code?.trim().toUpperCase() ?? "";
   if (!normalized) return { ok: false, error: "Введите промокод" };
 
-  const [promo] = await db
-    .select()
-    .from(promotions)
-    .where(eq(promotions.code, normalized));
-  if (!promo || !promo.isActive) {
+  const [promo] = await db.select().from(promotions).where(eq(promotions.code, normalized));
+  if (!promo?.isActive) {
     return { ok: false, error: "Промокод не найден" };
   }
 

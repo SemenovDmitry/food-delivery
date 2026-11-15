@@ -12,10 +12,7 @@ export function formatPrice(kopecks: number): string {
 }
 
 /** «−20%» | «−150 ₽» — подпись выгоды акции */
-export function formatDiscount(promo: {
-  discountType: string;
-  discountValue: number;
-}): string {
+export function formatDiscount(promo: { discountType: string; discountValue: number }): string {
   return promo.discountType === "percent"
     ? `−${promo.discountValue}%`
     : `−${formatPrice(promo.discountValue)}`;
