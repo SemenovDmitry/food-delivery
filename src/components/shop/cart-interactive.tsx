@@ -1,6 +1,6 @@
 'use client'
 
-import { Minus, Plus, Trash2 } from 'lucide-react'
+import { Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { useOptimistic, useState, useTransition } from 'react'
 import { toast } from 'sonner'
@@ -10,9 +10,9 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { removeFromCart, setQty } from '@/lib/actions/cart'
 import { computeTotals } from '@/lib/cart-totals'
 import type { CartLineData, CartPromoData, DeliverySettingsData } from '@/lib/cart-types'
-import { MAX_QTY } from '@/lib/constants'
 import type { Fulfillment } from '@/lib/delivery'
 import { formatPrice } from '@/lib/format'
+import { Counter } from './counter'
 import { OrderTotals } from './order-totals'
 import { PromoBlock } from './promo-block'
 
@@ -103,27 +103,16 @@ export function CartInteractive({
 									<p className='text-sm text-muted-foreground'>{formatPrice(line.price)}</p>
 								</div>
 								<div className='flex items-center gap-1'>
-									<Button
-										variant='outline'
-										size='icon'
-										className='size-8'
-										disabled={isPending || line.qty <= 1}
-										aria-label={`Убрать одну «${line.name}»`}
-										onClick={() => updateQty(line.productId, line.qty - 1)}
-									>
-										<Minus aria-hidden className='size-4' />
-									</Button>
-									<span className='w-8 text-center tabular-nums'>{line.qty}</span>
-									<Button
-										variant='outline'
-										size='icon'
-										className='size-8'
-										disabled={isPending || line.qty >= MAX_QTY}
-										aria-label={`Добавить одну «${line.name}»`}
-										onClick={() => updateQty(line.productId, line.qty + 1)}
-									>
-										<Plus aria-hidden className='size-4' />
-									</Button>
+									<Counter
+										size='sm'
+										value={line.qty}
+										disabled={isPending}
+										onDecrease={() => updateQty(line.productId, line.qty - 1)}
+										onIncrease={() => updateQty(line.productId, line.qty + 1)}
+										decreaseLabel={`Убрать одну «${line.name}»`}
+										increaseLabel={`Добавить одну «${line.name}»`}
+										valueClassName='tabular-nums'
+									/>
 									<Button
 										variant='ghost'
 										size='icon'

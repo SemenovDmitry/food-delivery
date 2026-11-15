@@ -1,11 +1,10 @@
 'use client'
 
-import { Minus, Plus } from 'lucide-react'
 import Image from 'next/image'
 import { useState } from 'react'
 import { AddToCartButton } from '@/components/shop/add-to-cart-button'
+import { Counter } from '@/components/shop/counter'
 import { PriceLine } from '@/components/shop/price-line'
-import { Button } from '@/components/ui/button'
 import { MAX_QTY } from '@/lib/constants'
 import { formatPrice } from '@/lib/format'
 import type { MenuProduct } from '@/queries/menu'
@@ -63,26 +62,15 @@ export function ProductDetails({ product, onAdded }: ProductDetailsProps) {
 			{/* Степпер количества; значение озвучивается через aria-live */}
 			<div className='flex items-center gap-3'>
 				<span className='text-sm text-muted-foreground'>Количество</span>
-				<Button
-					variant='outline'
-					size='icon'
-					aria-label='Уменьшить количество'
-					disabled={qty <= 1}
-					onClick={() => setQty((q) => Math.max(1, q - 1))}
-				>
-					<Minus aria-hidden className='size-4' />
-				</Button>
-				<span aria-live='polite' className='w-8 text-center font-semibold'>
-					{qty}
-				</span>
-				<Button
-					variant='outline'
-					size='icon'
-					aria-label='Увеличить количество'
-					onClick={() => setQty((q) => Math.min(MAX_QTY, q + 1))}
-				>
-					<Plus aria-hidden className='size-4' />
-				</Button>
+				<Counter
+					value={qty}
+					announceValue
+					onDecrease={() => setQty((q) => Math.max(1, q - 1))}
+					onIncrease={() => setQty((q) => Math.min(MAX_QTY, q + 1))}
+					decreaseLabel='Уменьшить количество'
+					increaseLabel='Увеличить количество'
+					valueClassName='font-semibold'
+				/>
 			</div>
 
 			<AddToCartButton productId={product.id} qty={qty} size='lg' fullWidth onAdded={onAdded} />
