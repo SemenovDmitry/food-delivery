@@ -1,5 +1,6 @@
 'use client'
 
+import { cn } from 'cn'
 import { X } from 'lucide-react'
 import { useId, useState, useTransition } from 'react'
 import { toast } from 'sonner'
@@ -23,9 +24,11 @@ type PromoBlockProps = {
 }
 
 /**
- * Промо-блок /cart (тикет 04): доступные акции сверху (Применить / disabled+причина),
- * активная ниже с суммой скидки и ✕, поле ввода кода. Акции не складываются:
- * применение другой заменяет активную (гриллинг 2026-11-15, Q14).
+ * Промо-блок /cart (тикет 04, вёрстка — компактные карточки по просьбе
+ * пользователя): применённая из списка акция подсвечивается классом на своей
+ * карточке (border-primary), промокод, введённый вручную (его нет в списке),
+ * — отдельной плашкой с ✕. Акции не складываются: применение другой
+ * заменяет активную (гриллинг 2026-11-15, Q14).
  */
 export function PromoBlock({ activePromo, availablePromos, lines, promoQuery }: PromoBlockProps) {
 	const [isPending, startTransition] = useTransition()
@@ -54,70 +57,57 @@ export function PromoBlock({ activePromo, availablePromos, lines, promoQuery }: 
 		})
 	}
 
-	// CartLineData структурно = CalcLine — передаём напрямую (ревью S7)
-	const qtyDiscount = activePromo ? calcDiscount(lines, activePromo) : null
-	// невалидность активной акции: по состоянию (isActive/окно — сервер, готовая формулировка)
-	// либо по составу корзины (qty — причина из calcDiscount)
-	const notUsableReason = activePromo?.stateReason
+	/** активная акция есть в списке → подсветка её карточки; нет → плашка (кастомный ввод) */
+	const activeInList = activePromo ? availablePromos.some((p) => p.id === activePromo.id) : false
+	// причины плашки кастомного промо: по состоянию (isActive/окно, сервер) либо по составу (qty)
+	const customQtyDiscount = activePromo && !activeInList ? calcDiscount(lines, activePromo) : null
+	const plateReason = activePromo?.stateReason
 		? activePromo.stateReason
-		: qtyDiscount && !qtyDiscount.applicable
-			? `Промокод больше не действует: ${qtyDiscount.reason}`
+		: customQtyDiscount && !customQtyDiscount.applicable
+			? `Промокод больше не действует: ${customQtyDiscount.reason}`
 			: null
 
 	return (
-		<section aria-labelledby='cart-promos-heading' className='space-y-3'>
-			<h2 id='cart-promos-heading' className='text-lg font-semibold'>
+		<section aria-labelledby='cart-promos-heading' className='space-y-2.5'>
+			<h2 id='cart-promos-heading' className='text-base font-semibold'>
 				Акции
 			</h2>
 
 			<ul className='grid gap-2 sm:grid-cols-2'>
 				{availablePromos.map((promo) => {
 					const discount = calcDiscount(lines, promo)
-					const isActive = activePromo?.id === promo.id
-					const reasonId = `promo-reason-${promo.id}`
 					return (
-						<li key={promo.id} className='rounded-lg border p-3'>
-							<p className='font-medium'>{promo.name}</p>
-							<p className='text-sm text-muted-foreground'>{promo.conditionLabel}</p>
-							<div className='mt-2 flex items-center justify-between gap-2'>
-								{discount.applicable ? (
-									<span className='text-sm text-primary'>
-										скидка −{formatPrice(discount.amount)}
-									</span>
-								) : (
-									<span id={reasonId} className='text-sm text-muted-foreground'>
-										{discount.reason}
-									</span>
-								)}
-								<Button
-									size='sm'
-									variant='outline'
-									disabled={isPending || isActive || !discount.applicable}
-									aria-describedby={!discount.applicable ? reasonId : undefined}
-									onClick={() => apply(promo.code ?? '')}
-								>
-									{isActive ? 'Применена' : 'Применить'}
-								</Button>
-							</div>
-						</li>
+						<PromoOptionCard
+							key={promo.id}
+							promo={promo}
+							isActive={activePromo?.id === promo.id}
+							applicable={discount.applicable}
+							discountAmount={discount.applicable ? discount.amount : null}
+							reason={!discount.applicable ? discount.reason : null}
+							pending={isPending}
+							onApply={() => apply(promo.code ?? '')}
+							onRemove={remove}
+						/>
 					)
 				})}
 			</ul>
 
-			{activePromo && (
-				<div className='flex items-center justify-between gap-3 rounded-lg border border-primary/40 bg-primary/5 px-3 py-2'>
+			{activePromo && !activeInList && (
+				<div className='flex items-center justify-between gap-3 rounded-lg border border-primary/40 bg-primary/5 px-2.5 py-2'>
 					<div className='min-w-0'>
-						<p className='font-medium'>
+						<p className='truncate text-sm font-medium'>
 							{activePromo.name}{' '}
 							{activePromo.code && (
 								<span className='text-muted-foreground'>({activePromo.code})</span>
 							)}
 						</p>
-						{!notUsableReason && qtyDiscount?.applicable ? (
-							<p className='text-sm text-primary'>Скидка: −{formatPrice(qtyDiscount.amount)}</p>
+						{!plateReason && customQtyDiscount?.applicable ? (
+							<p className='text-xs text-primary'>
+								Скидка: −{formatPrice(customQtyDiscount.amount)}
+							</p>
 						) : (
-							<p className='text-sm text-destructive'>
-								{notUsableReason ?? 'Промокод больше не действует'}
+							<p className='text-xs text-destructive'>
+								{plateReason ?? 'Промокод больше не действует'}
 							</p>
 						)}
 					</div>
@@ -136,6 +126,74 @@ export function PromoBlock({ activePromo, availablePromos, lines, promoQuery }: 
 
 			<PromoCodeForm initialCode={promoQuery} error={codeError} onErrorChange={setCodeError} />
 		</section>
+	)
+}
+
+type PromoOptionCardProps = {
+	promo: CartPromoData
+	/** промо применён — карточка подсвечивается, кнопка заменяется на ✕ */
+	isActive: boolean
+	applicable: boolean
+	discountAmount: number | null
+	reason: string | null
+	pending: boolean
+	onApply: () => void
+	onRemove: () => void
+}
+
+/** Карточка доступной акции (компактная вёрстка): имя+условие, кнопка, скидка/причина */
+function PromoOptionCard({
+	promo,
+	isActive,
+	applicable,
+	discountAmount,
+	reason,
+	pending,
+	onApply,
+	onRemove,
+}: PromoOptionCardProps) {
+	const reasonId = `promo-option-reason-${promo.id}`
+	return (
+		<li className={cn('rounded-lg border p-2.5', isActive && 'border-primary bg-primary/5')}>
+			<div className='flex items-center justify-between gap-2'>
+				<div className='min-w-0'>
+					<p className={cn('truncate text-sm font-medium', isActive && 'text-primary')}>
+						{promo.name}
+					</p>
+					<p className='truncate text-xs text-muted-foreground'>{promo.conditionLabel}</p>
+				</div>
+				{isActive ? (
+					<Button
+						variant='ghost'
+						size='icon'
+						className='size-7 shrink-0 text-muted-foreground hover:text-destructive'
+						aria-label={`Снять промокод «${promo.name}»`}
+						disabled={pending}
+						onClick={onRemove}
+					>
+						<X aria-hidden className='size-4' />
+					</Button>
+				) : (
+					<Button
+						size='sm'
+						variant='outline'
+						className='shrink-0'
+						disabled={pending || !applicable}
+						aria-describedby={reason ? reasonId : undefined}
+						onClick={onApply}
+					>
+						Применить
+					</Button>
+				)}
+			</div>
+			{reason ? (
+				<p id={reasonId} className='mt-1 truncate text-xs text-muted-foreground'>
+					{reason}
+				</p>
+			) : discountAmount !== null ? (
+				<p className='mt-1 text-xs text-primary'>скидка −{formatPrice(discountAmount)}</p>
+			) : null}
+		</li>
 	)
 }
 
@@ -172,9 +230,11 @@ function PromoCodeForm({ initialCode, error, onErrorChange }: PromoCodeFormProps
 	}
 
 	return (
-		<form onSubmit={submit} className='rounded-lg border p-3'>
-			<Label htmlFor='promo-code'>Промокод</Label>
-			<div className='mt-1.5 flex gap-2'>
+		<form onSubmit={submit} className='rounded-lg border p-2.5'>
+			<Label htmlFor='promo-code' className='text-sm'>
+				Промокод
+			</Label>
+			<div className='mt-1 flex gap-2'>
 				<Input
 					id='promo-code'
 					value={code}
@@ -193,7 +253,7 @@ function PromoCodeForm({ initialCode, error, onErrorChange }: PromoCodeFormProps
 				</Button>
 			</div>
 			{error && (
-				<p id={errorId} className='mt-1.5 text-sm text-destructive'>
+				<p id={errorId} className='mt-1 text-xs text-destructive'>
 					{error}
 				</p>
 			)}
