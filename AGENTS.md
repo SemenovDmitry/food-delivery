@@ -14,10 +14,11 @@
 - Светлая и тёмная темы — равнозначные
 - Доступность WCAG 2.1 AA / EN 301 549 (EU Accessibility Act)
 - Учебный, но с прод-практиками: **готов к деплою в Docker в любой момент** (без CI — проект учебный)
+- Пакетный менеджер — **pnpm 11**; npm/yarn не используем
 
 ## 2. Стек
 
-Next.js 16.4.6 (App Router, Turbopack, Cache Components, Partial Prefetching, React Compiler) · React 19.3 · TypeScript strict · Tailwind v4 + shadcn/ui (radix, preset nova) · **PostgreSQL 17 в docker-compose + Drizzle ORM (pg-core, драйвер postgres-js, миграции drizzle-kit)** · better-auth (email+password, роли admin/manager/customer) · **MinIO (S3-совместимое хранилище; клиент @aws-sdk/client-s3) + sharp (обработка фото)** · AI SDK 7 (`ai` + `@ai-sdk/react` + провайдеры openai/anthropic/google) · next-themes · pnpm.
+Next.js 16.4.6 (App Router, Turbopack, Cache Components, Partial Prefetching, React Compiler) · React 19.3 · TypeScript strict · Tailwind v4 + shadcn/ui (radix, preset nova) · **PostgreSQL 17 в docker-compose + Drizzle ORM (pg-core, драйвер postgres-js, миграции drizzle-kit)** · better-auth (email+password, роли admin/manager/customer) · **MinIO (S3-совместимое хранилище; клиент @aws-sdk/client-s3) + sharp (обработка фото)** · AI SDK 7 (`ai` + `@ai-sdk/react` + провайдеры openai/anthropic/google) · next-themes · пакетный менеджер **pnpm 11** (pnpm-workspace.yaml с `allowBuilds`; npm/yarn не используем).
 
 Решения гриллинга 2026-11-15 (полная картина — §6, §8, §11): **без отдельного бэкенда** — монолит Next.js: чтения RSC напрямую из БД, записи Server Actions, Route Handlers ровно 4; **Postgres вместо SQLite** с этапа 0; **серверная корзина вместо Zustand**; **максимальное кеширование** (§5.3, §6, §11).
 
