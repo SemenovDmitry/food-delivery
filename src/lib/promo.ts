@@ -18,6 +18,11 @@ export function isPromoInWindow(promo: Promotion, now: Date): boolean {
 	return started && notEnded
 }
 
+/** Витринный фильтр окна — общий для getActivePromotions (RSC) и GET /api/promotions */
+export function filterPromosInWindow(promos: Promotion[], now: Date): Promotion[] {
+	return promos.filter((p) => isPromoInWindow(p, now))
+}
+
 /**
  * Валидность акции ПО СОСТОЯНИЮ (не зависит от состава корзины): isActive + окно.
  * null = применима; строка = причина отказа. Показ активного промо на /cart и

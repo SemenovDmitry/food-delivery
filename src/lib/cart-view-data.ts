@@ -57,7 +57,9 @@ function toPromoData(
 
 /**
  * Общая загрузка данных корзины для /cart и /checkout (тикеты 03/05).
- * Состав и цены — из БД (§5.10); безкодовые акции отфильтрованы (Q2).
+ * Состав и цены — из БД (§5.10). availablePromos — только публичные (фильтр
+ * isPublic внутри кеша, queries/promotions) с кодом: безкодовые отфильтрованы (Q2),
+ * скрытые промокоды сюда не попадают — их путь только ввод кода.
  */
 export async function loadCartViewData(): Promise<CartViewData | null> {
 	const cart = await getCartForRead()

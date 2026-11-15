@@ -157,6 +157,12 @@ export const promotions = pgTable('promotions', {
 	startsAt: timestamp('starts_at'),
 	endsAt: timestamp('ends_at'),
 	isActive: boolean('is_active').notNull().default(true),
+	/**
+	 * Публичность (этап 2, GLOSSARY «Публичная акция»/«Скрытый промокод»):
+	 * true → лента «Акции недели», /promo, GET /api/promotions, блок акций корзины;
+	 * false → нигде не показывается, единственный путь применения — ввод кода на /cart.
+	 */
+	isPublic: boolean('is_public').notNull().default(true),
 	createdAt: timestamp('created_at').notNull().defaultNow(),
 })
 

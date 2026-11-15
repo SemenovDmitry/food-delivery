@@ -160,6 +160,8 @@ const SEED_SET_ITEMS: { setName: string; items: { productName: string; qty: numb
 /**
  * Акции — демо-заглушки до этапа 5 (CRUD в админке, гриллинг этапа 1).
  * categorySlug — скоуп (null = весь заказ); minTotal — копейки, 0 = без условия.
+ * isPublic: false = скрытый промокод (GLOSSARY) — нигде не показывается,
+ * единственный путь применения — ввод кода на /cart.
  */
 type SeedPromotion = {
 	name: string
@@ -168,6 +170,7 @@ type SeedPromotion = {
 	discountValue: number
 	categorySlug?: string
 	minTotal?: number
+	isPublic?: boolean
 	daysOffset: number
 }
 
@@ -195,6 +198,15 @@ const SEED_PROMOTIONS: SeedPromotion[] = [
 		discountValue: 30000,
 		categorySlug: 'pizza',
 		minTotal: 100000,
+		daysOffset: 30,
+	},
+	{
+		// Скрытый промокод (этап 2): в лентах/API его нет, применяется только вводом кода
+		name: '−15% на весь заказ',
+		code: 'SECRET15',
+		discountType: 'percent',
+		discountValue: 15,
+		isPublic: false,
 		daysOffset: 30,
 	},
 ]
@@ -287,6 +299,8 @@ async function seed() {
 			categoryId: promo.categorySlug ? (categoryIds.get(promo.categorySlug) ?? null) : null,
 			minTotal: promo.minTotal ?? 0,
 			isActive: true,
+			// isPublic пишется явно: повторный прогон исправляет дрейф (тикет 01)
+			isPublic: promo.isPublic ?? true,
 			startsAt: new Date(now - 24 * 60 * 60 * 1000), // окно открыто сутки назад
 			endsAt: new Date(now + promo.daysOffset * 24 * 60 * 60 * 1000),
 		}

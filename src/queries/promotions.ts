@@ -1,14 +1,21 @@
-import { asc, eq } from 'drizzle-orm'
+import { and, asc, eq } from 'drizzle-orm'
 import { cacheLife, cacheTag } from 'next/cache'
 import { connection } from 'next/server'
 import { db } from '@/db'
 import type { Promotion } from '@/db/schema'
 import { promotions } from '@/db/schema'
-import { isPromoInWindow } from '@/lib/promo'
+import { filterPromosInWindow } from '@/lib/promo'
 
 /**
- * Кешируются ДАННЫЕ активных акций (isActive=true) — без времён (§5.3):
- * окно startsAt/endsAt фильтруется на чтении ВНЕ кеша в getActivePromotions.
+ * Кешируются ДАННЫЕ витринных акций — isActive=true И isPublic=true (§5.3):
+ * все витринные потребители (лента главной, /promo, блок акций корзины,
+ * GET /api/promotions) получают только публичные ПО ПОСТРОЕНИЮ — скрытые
+ * промокоды (GLOSSARY) не могут утечь забытым фильтром на чтении.
+ *
+ * Скрытые живут в двух местах мимо этой функции: applyPromoCode (поиск
+ * по коду — прямой запрос) и getPromotionById (активное промо корзины).
+ * Админке (этап 5) — СВОЙ список без фильтров (getAllPromotions):
+ * этой кеш-функцией она не пользуется; мутации акций зовут updateTag('promos').
  */
 export async function getCachedActivePromotions(): Promise<Promotion[]> {
 	'use cache'
@@ -18,7 +25,7 @@ export async function getCachedActivePromotions(): Promise<Promotion[]> {
 	return db
 		.select()
 		.from(promotions)
-		.where(eq(promotions.isActive, true))
+		.where(and(eq(promotions.isActive, true), eq(promotions.isPublic, true)))
 		.orderBy(asc(promotions.createdAt))
 }
 
@@ -32,8 +39,7 @@ export async function getActivePromotions(): Promise<Promotion[]> {
 	// исполнится на пререндере сборки и потребует живую БД (§5.3)
 	await connection()
 	const promos = await getCachedActivePromotions()
-	const now = new Date()
-	return promos.filter((p) => isPromoInWindow(p, now))
+	return filterPromosInWindow(promos, new Date())
 }
 
 /**
