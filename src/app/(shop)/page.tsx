@@ -4,8 +4,6 @@ import { Suspense } from "react";
 import { MenuNav } from "@/components/shop/menu-nav";
 import { ProductCard } from "@/components/shop/product-card";
 import { PromoCard } from "@/components/shop/promo-card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getFullMenu, type MenuCategory } from "@/queries/menu";
 import { getActivePromotions } from "@/queries/promotions";
@@ -81,25 +79,7 @@ async function MenuSection({ searchParams }: { searchParams: SearchParams }) {
       <div className="mx-auto max-w-6xl px-4 pb-16">
         <h1 className="sr-only">Меню доставки</h1>
 
-        {/* Нативная GET-форма поиска (§11); <search> — семантический лендмарк */}
-        <search className="flex gap-2 py-4">
-          <form action="/" method="get" className="flex flex-1 gap-2">
-            <Input
-              type="search"
-              name="q"
-              defaultValue={query}
-              aria-label="Поиск по меню"
-              placeholder="Найти в меню…"
-            />
-            <Button type="submit">Найти</Button>
-            {query ? (
-              <Button type="button" variant="ghost" asChild>
-                <Link href="/">Сбросить</Link>
-              </Button>
-            ) : null}
-          </form>
-        </search>
-
+        {/* Форма поиска — в шапке с 2026-11-15 (§11); здесь только фильтрация `?q` */}
         <p aria-live="polite" className="min-h-5 text-sm text-muted-foreground">
           {query
             ? filtered.length > 0

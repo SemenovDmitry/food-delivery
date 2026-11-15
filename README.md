@@ -4,7 +4,7 @@
 
 ## Стек
 
-Next.js 16 (App Router, Turbopack, Cache Components, Partial Prefetching, React Compiler) · React 19 · TypeScript strict · Tailwind v4 + shadcn/ui · PostgreSQL 17 + Drizzle ORM · better-auth · MinIO + sharp · AI SDK 7 · Docker (multi-stage, standalone) · pnpm 11.
+Next.js 16 (App Router, Turbopack, Cache Components, Partial Prefetching, React Compiler) · React 19 · TypeScript strict · Tailwind v4 + shadcn/ui · PostgreSQL 17 + Drizzle ORM · better-auth · MinIO + sharp · WebSockets (ws-шлюз + LISTEN/NOTIFY) · Docker (multi-stage, standalone) · pnpm 11.
 
 ## Быстрый старт
 
@@ -31,7 +31,7 @@ Mailpit (письма): http://localhost:8025 · MinIO: http://localhost:9000
 | 3    | Auth + история заказов                               | better-auth, слияние корзины                          |
 | 4    | Трекинг заказа                                       | polling + ETag 304, error/loading/not-found           |
 | 5    | Админка + картинки                                   | MinIO/S3, next/image, proxy-гард                      |
-| 6    | AI-ассистент                                         | AI SDK 7, streaming, tools                            |
+| 6    | Real-time чат поддержки (WebSockets)                 | ws-шлюз, LISTEN/NOTIFY, realtime-виджет               |
 | 7    | Верификация                                          | lint/build, Lighthouse a11y                           |
 | 8    | Git                                                  | коммиты по этапам                                     |
 | 9    | Оплата (мок-провайдер с webhook-контрактом)          | Route Handlers, HMAC                                  |

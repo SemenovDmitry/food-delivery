@@ -3,10 +3,12 @@
 import Link from "next/link";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth-client";
 
 /**
- * Клиентский header (§11): навигация + ThemeToggle + AuthArea на authClient.useSession().
+ * Клиентский header (§11): навигация + GET-форма поиска `?q` (перенесена с главной
+ * 2026-11-15) + ThemeToggle + AuthArea на authClient.useSession().
  * Бейдж корзины добавляется в этапе 1 (динамический фрагмент в Suspense).
  */
 export function Header() {
@@ -26,10 +28,27 @@ export function Header() {
           <Button variant="ghost" size="sm" asChild>
             <Link href="/promo">Акции</Link>
           </Button>
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/assistant">Ассистент</Link>
-          </Button>
         </nav>
+
+        {/*
+          Нативная GET-форма поиска: работает с любой страницы, сабмит → /?q=…
+          (§5.3: searchParams не читаем в клиентском shell — shell остаётся кешируемым,
+          поэтому без defaultValue).
+        */}
+        <search className="min-w-0 flex-1">
+          <form action="/" method="get" className="flex w-full items-center justify-end gap-1">
+            <Input
+              type="search"
+              name="q"
+              aria-label="Поиск по меню"
+              placeholder="Найти в меню…"
+              className="h-9 max-w-xs"
+            />
+            <Button type="submit" variant="ghost" size="sm">
+              Найти
+            </Button>
+          </form>
+        </search>
 
         <div className="ml-auto flex items-center gap-2">
           <ThemeToggle />
