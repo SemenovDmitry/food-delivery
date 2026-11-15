@@ -1,0 +1,12 @@
+#!/bin/sh
+# Локальный guardrail (ретро этапа 1, AGENTS.md §5.27): формат/lint/импорты + типы до коммита.
+# Включение один раз на машине после клона: git config core.hooksPath scripts/hooks
+set -e
+
+echo "[pre-commit] biome check..."
+pnpm exec biome check .
+
+echo "[pre-commit] tsc --noEmit..."
+pnpm exec tsc --noEmit
+
+echo "[pre-commit] ok"
