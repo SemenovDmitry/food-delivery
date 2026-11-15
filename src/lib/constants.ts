@@ -1,2 +1,2 @@
 /** Общий кап количества товара в корзине/заказе */
-export const MAX_QTY = 99;
+export const MAX_QTY = 99
