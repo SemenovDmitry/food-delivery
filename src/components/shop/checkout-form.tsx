@@ -138,7 +138,7 @@ export function CheckoutForm({
 					/>
 
 					<div className='grid gap-4 sm:grid-cols-2'>
-						<div className='grid gap-1.5'>
+						<div className='flex flex-col gap-1.5'>
 							<Label htmlFor='checkout-name'>Имя</Label>
 							<Input
 								id='checkout-name'
@@ -154,7 +154,7 @@ export function CheckoutForm({
 								</p>
 							)}
 						</div>
-						<div className='grid gap-1.5'>
+						<div className='flex flex-col gap-1.5'>
 							<Label htmlFor='checkout-phone'>Телефон</Label>
 							<Input
 								id='checkout-phone'
@@ -174,7 +174,7 @@ export function CheckoutForm({
 					</div>
 
 					{!isPickup && (
-						<div className='grid gap-1.5'>
+						<div className='flex flex-col gap-1.5'>
 							<Label htmlFor='checkout-address'>Адрес доставки</Label>
 							<Textarea
 								id='checkout-address'
@@ -192,7 +192,7 @@ export function CheckoutForm({
 						</div>
 					)}
 
-					<div className='grid gap-1.5'>
+					<div className='flex flex-col gap-1.5'>
 						<Label htmlFor='checkout-comment'>Комментарий к заказу (необязательно)</Label>
 						<Textarea
 							id='checkout-comment'
