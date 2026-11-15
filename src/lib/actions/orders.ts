@@ -5,19 +5,15 @@ import { revalidatePath, updateTag } from 'next/cache'
 import { db } from '@/db'
 import { cartItems, carts, orderItems, orders, promotions } from '@/db/schema'
 import { getCartLines, getOrCreateCart } from '@/lib/cart'
-import { calcDiscount, isPromoInWindow, toCalcLines } from '@/lib/promo'
 import { deliveryFeeFor } from '@/lib/delivery'
+import { calcDiscount, isPromoInWindow, toCalcLines } from '@/lib/promo'
+import type { CheckoutFormValues } from '@/lib/schemas/checkout'
+import { checkoutFormSchema } from '@/lib/schemas/checkout'
 import { getSession } from '@/lib/session'
 import { getDeliverySettings } from '@/lib/settings'
 import type { ActionResult } from '@/lib/types'
 
-export type CreateOrderPayload = {
-	customerName: string
-	phone: string
-	fulfillment: 'delivery' | 'pickup'
-	address?: string
-	comment?: string
-}
+export type CreateOrderPayload = CheckoutFormValues
 
 /** Снятие промокода с корзины (кто виноват — решает вызывающий) */
 async function clearCartPromo(cartId: string) {
@@ -29,28 +25,20 @@ async function clearCartPromo(cartId: string) {
  * createOrder: состав из корзины в БД (не из клиента), снапшот цен,
  * ревалидация промокода и расчёт доставки на сервере, транзакция,
  * revalidateTag('orders') (§5.10 + гриллинг этапа 1).
+ * Валидация — та же zod-схема, что и на клиенте (единственный источник правил),
+ * но парсим её ЗДЕСЬ: данные из клиента не доверяем (§5.10).
  */
 export async function createOrder(
 	payload: CreateOrderPayload,
 ): Promise<ActionResult<{ orderId: string }>> {
-	const customerName = payload.customerName?.trim() ?? ''
-	const phone = payload.phone?.trim() ?? ''
-	const fulfillment = payload.fulfillment
-	const address = payload.address?.trim() ?? ''
-	const comment = payload.comment?.trim() ?? ''
-
-	if (customerName.length < 2) {
-		return { data: null, error: 'Укажите имя' }
+	const parsed = checkoutFormSchema.safeParse(payload)
+	if (!parsed.success) {
+		return {
+			data: null,
+			error: parsed.error.issues[0]?.message ?? 'Проверьте данные заказа',
+		}
 	}
-	if (phone.replace(/\D/g, '').length < 10) {
-		return { data: null, error: 'Укажите корректный телефон' }
-	}
-	if (fulfillment !== 'delivery' && fulfillment !== 'pickup') {
-		return { data: null, error: 'Некорректный способ получения' }
-	}
-	if (fulfillment === 'delivery' && address.length < 5) {
-		return { data: null, error: 'Укажите адрес доставки' }
-	}
+	const { customerName, phone, fulfillment, address, comment } = parsed.data
 
 	const cart = await getOrCreateCart()
 	const lines = await getCartLines(cart.id)

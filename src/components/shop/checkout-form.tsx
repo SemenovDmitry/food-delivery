@@ -1,12 +1,10 @@
 'use client'
 
+import { zodResolver } from '@hookform/resolvers/zod'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useState, useTransition } from 'react'
-import type { CartLineData, CartPromoData, DeliverySettingsData } from '@/lib/cart-types'
-import { computeTotals } from '@/lib/cart-totals'
-import { createOrder } from '@/lib/actions/orders'
-import { formatPrice } from '@/lib/format'
+import { useState } from 'react'
+import { Controller, useForm } from 'react-hook-form'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -22,24 +20,28 @@ import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
-
-type Fulfillment = 'delivery' | 'pickup'
+import { createOrder } from '@/lib/actions/orders'
+import { computeTotals } from '@/lib/cart-totals'
+import type { CartLineData, CartPromoData, DeliverySettingsData } from '@/lib/cart-types'
+import { formatPrice } from '@/lib/format'
+import { type CheckoutFormValues, checkoutFormSchema } from '@/lib/schemas/checkout'
 
 type CheckoutFormProps = {
 	lines: CartLineData[]
 	activePromo: CartPromoData | null
 	delivery: DeliverySettingsData
-	initialFulfillment: Fulfillment
+	initialFulfillment: CheckoutFormValues['fulfillment']
 	/** prefill из сессии (гость — пустые) */
 	initialName: string
 	initialPhone: string
 }
 
 /**
- * Чекаут (тикет 05): товары read-only, контакты/адрес/комментарий с inline-
- * валидацией, финальные тоталы, createOrder. Серверные ошибки — Dialog-модалка:
- * промо-ошибка уже сняла промо с корзины, повторное «Оформить» проходит без
- * скидки (гриллинг 2026-11-15, Q12).
+ * Чекаут (тикет 05): товары read-only, контакты/адрес/комментарий, финальные
+ * тоталы, createOrder. Форма — react-hook-form + zod: правила в
+ * checkoutFormSchema (тип = z.infer), сервер парсит той же схемой.
+ * Серверные ошибки — Dialog-модалка: промо-ошибка уже сняла промо с корзины,
+ * повторное «Оформить» проходит без скидки (гриллинг 2026-11-15, Q12).
  */
 export function CheckoutForm({
 	lines,
@@ -50,53 +52,45 @@ export function CheckoutForm({
 	initialPhone,
 }: CheckoutFormProps) {
 	const router = useRouter()
-	const [isPending, startTransition] = useTransition()
-	const [fulfillment, setFulfillment] = useState<Fulfillment>(initialFulfillment)
-	const [name, setName] = useState(initialName)
-	const [phone, setPhone] = useState(initialPhone)
-	const [address, setAddress] = useState('')
-	const [comment, setComment] = useState('')
-	const [errors, setErrors] = useState<Record<string, string>>({})
 	const [serverError, setServerError] = useState<string | null>(null)
 
+	const {
+		control,
+		formState: { errors, isSubmitting },
+		handleSubmit,
+		register,
+		watch,
+	} = useForm<CheckoutFormValues>({
+		resolver: zodResolver(checkoutFormSchema),
+		mode: 'onTouched', // ошибка после первого blur, дальше — на каждое изменение
+		defaultValues: {
+			customerName: initialName,
+			phone: initialPhone,
+			fulfillment: initialFulfillment,
+			address: '',
+			comment: '',
+		},
+	})
+
+	const fulfillment = watch('fulfillment')
 	const isPickup = fulfillment === 'pickup'
 	const totals = computeTotals(lines, activePromo, fulfillment, delivery)
 	const empty = lines.length === 0
 
-	function validate(): boolean {
-		const next: Record<string, string> = {}
-		if (name.trim().length < 2) next.name = 'Укажите имя (минимум 2 символа)'
-		if (phone.replace(/\D/g, '').length < 10) next.phone = 'Укажите корректный телефон'
-		if (!isPickup && address.trim().length < 5) next.address = 'Укажите адрес доставки'
-		setErrors(next)
-		return Object.keys(next).length === 0
-	}
-
-	function submit(event: React.FormEvent<HTMLFormElement>) {
-		event.preventDefault()
+	const onSubmit = handleSubmit(async (values) => {
 		setServerError(null)
-		if (!validate()) return
-
-		startTransition(async () => {
-			const result = await createOrder({
-				customerName: name,
-				phone,
-				fulfillment,
-				address: isPickup ? undefined : address,
-				comment: comment || undefined,
-			})
-			if (result.data !== null) {
-				router.push(`/orders/${result.data.orderId}`)
-			} else {
-				// промо-ошибка: createOrder уже снял promoId — корзина под модалкой обновится
-				setServerError(result.error)
-			}
-		})
-	}
+		const result = await createOrder(values)
+		if (result.data !== null) {
+			router.push(`/orders/${result.data.orderId}`)
+		} else {
+			// промо-ошибка: createOrder уже снял promoId — корзина под модалкой обновится
+			setServerError(result.error)
+		}
+	})
 
 	return (
 		<div className='mt-6 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]'>
-			<form id='checkout-form' onSubmit={submit} noValidate className='min-w-0 space-y-6'>
+			<form id='checkout-form' onSubmit={onSubmit} noValidate className='min-w-0 space-y-6'>
 				<section aria-labelledby='checkout-order-heading'>
 					<h2 id='checkout-order-heading' className='text-lg font-semibold'>
 						Ваш заказ
@@ -130,28 +124,33 @@ export function CheckoutForm({
 						Контакты и получение
 					</h2>
 
-					<Tabs value={fulfillment} onValueChange={(value) => setFulfillment(value as Fulfillment)}>
-						<TabsList>
-							<TabsTrigger value='delivery'>Доставка</TabsTrigger>
-							<TabsTrigger value='pickup'>Самовывоз</TabsTrigger>
-						</TabsList>
-					</Tabs>
+					<Controller
+						control={control}
+						name='fulfillment'
+						render={({ field }) => (
+							<Tabs value={field.value} onValueChange={field.onChange}>
+								<TabsList>
+									<TabsTrigger value='delivery'>Доставка</TabsTrigger>
+									<TabsTrigger value='pickup'>Самовывоз</TabsTrigger>
+								</TabsList>
+							</Tabs>
+						)}
+					/>
 
 					<div className='grid gap-4 sm:grid-cols-2'>
 						<div className='grid gap-1.5'>
 							<Label htmlFor='checkout-name'>Имя</Label>
 							<Input
 								id='checkout-name'
-								value={name}
-								onChange={(event) => setName(event.target.value)}
 								placeholder='Как к вам обращаться'
 								autoComplete='name'
-								aria-invalid={errors.name !== undefined}
-								aria-describedby={errors.name ? 'checkout-name-error' : undefined}
+								aria-invalid={errors.customerName !== undefined}
+								aria-describedby={errors.customerName ? 'checkout-name-error' : undefined}
+								{...register('customerName')}
 							/>
-							{errors.name && (
+							{errors.customerName && (
 								<p id='checkout-name-error' className='text-sm text-destructive'>
-									{errors.name}
+									{errors.customerName.message}
 								</p>
 							)}
 						</div>
@@ -160,16 +159,15 @@ export function CheckoutForm({
 							<Input
 								id='checkout-phone'
 								type='tel'
-								value={phone}
-								onChange={(event) => setPhone(event.target.value)}
 								placeholder='+7 999 123-45-67'
 								autoComplete='tel'
 								aria-invalid={errors.phone !== undefined}
 								aria-describedby={errors.phone ? 'checkout-phone-error' : undefined}
+								{...register('phone')}
 							/>
 							{errors.phone && (
 								<p id='checkout-phone-error' className='text-sm text-destructive'>
-									{errors.phone}
+									{errors.phone.message}
 								</p>
 							)}
 						</div>
@@ -180,16 +178,15 @@ export function CheckoutForm({
 							<Label htmlFor='checkout-address'>Адрес доставки</Label>
 							<Textarea
 								id='checkout-address'
-								value={address}
-								onChange={(event) => setAddress(event.target.value)}
 								placeholder='Улица, дом, квартира'
 								rows={2}
 								aria-invalid={errors.address !== undefined}
 								aria-describedby={errors.address ? 'checkout-address-error' : undefined}
+								{...register('address')}
 							/>
 							{errors.address && (
 								<p id='checkout-address-error' className='text-sm text-destructive'>
-									{errors.address}
+									{errors.address.message}
 								</p>
 							)}
 						</div>
@@ -199,11 +196,11 @@ export function CheckoutForm({
 						<Label htmlFor='checkout-comment'>Комментарий к заказу (необязательно)</Label>
 						<Textarea
 							id='checkout-comment'
-							value={comment}
-							onChange={(event) => setComment(event.target.value)}
 							placeholder='Домофон, пожелания к заказу…'
 							rows={2}
+							{...register('comment')}
 						/>
+						{errors.comment && <p className='text-sm text-destructive'>{errors.comment.message}</p>}
 					</div>
 				</section>
 			</form>
@@ -248,9 +245,9 @@ export function CheckoutForm({
 							type='submit'
 							form='checkout-form'
 							className='w-full'
-							disabled={isPending || empty}
+							disabled={isSubmitting || empty}
 						>
-							{isPending ? 'Оформляем…' : 'Оформить заказ'}
+							{isSubmitting ? 'Оформляем…' : 'Оформить заказ'}
 						</Button>
 					</CardContent>
 				</Card>
