@@ -12,6 +12,9 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
+# Заглушка только на СБОРКУ (better-auth валидирует секрет при инициализации модуля;
+# нейтральное имя — чтобы не триггерить BuildKit SecretsUsedInArgOrEnv)
+ENV AUTH_SECRET_BUILD_FALLBACK=docker-build-placeholder-not-a-secret
 RUN pnpm build
 
 FROM base AS runner

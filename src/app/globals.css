@@ -128,3 +128,9 @@
     @apply font-sans;
   }
 }
+/* Плавный скролл к секциям меню — только если пользователь не просил reduce motion (§7) */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}

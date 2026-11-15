@@ -99,7 +99,6 @@ CREATE TABLE "products" (
 	"name" text NOT NULL,
 	"description" text,
 	"price" integer NOT NULL,
-	"old_price" integer,
 	"type" text DEFAULT 'single' NOT NULL,
 	"emoji" text DEFAULT '🍽️' NOT NULL,
 	"image_url" text,

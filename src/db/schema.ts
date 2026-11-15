@@ -117,8 +117,6 @@ export const products = pgTable("products", {
   description: text("description"),
   /** копейки (int) — см. GLOSSARY «Копейка» */
   price: integer("price").notNull(),
-  /** зачёркнутая старая цена (выгода сетов); для single — null */
-  oldPrice: integer("old_price"),
   /** single | set */
   type: text("type").notNull().default("single"),
   emoji: text("emoji").notNull().default("🍽️"), // фолбэк, пока нет фото

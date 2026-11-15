@@ -14,6 +14,11 @@ import { sendEmail } from "@/lib/email";
 const DEMO_SMS_CODE = process.env.DEMO_SMS_OTP_CODE ?? "1111";
 
 export const auth = betterAuth({
+  // AUTH_SECRET_BUILD_FALLBACK задаётся ТОЛЬКО в build-стадии Dockerfile
+  // (better-auth валидирует секрет при инициализации модуля). В рантайме
+  // runner-стадия её не наследует: без настоящего AUTH_SECRET better-auth
+  // упадёт с «default secret» — fail-fast (§5.18)
+  secret: process.env.AUTH_SECRET ?? process.env.AUTH_SECRET_BUILD_FALLBACK,
   database: drizzleAdapter(db, {
     provider: "pg",
     schema,

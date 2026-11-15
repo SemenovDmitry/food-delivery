@@ -10,7 +10,7 @@ const connectionString =
   process.env.DATABASE_URL ??
   "postgresql://postgres:postgres@localhost:5560/food_delivery";
 
-// max: 1 — чтобы drizzle-kit migrate не исчерпывал соединения
+// пул postgres-js; drizzle-kit использует своё соединение из drizzle.config
 const client = postgres(connectionString, { max: 10 });
 
 export const db = drizzle(client, { schema });
