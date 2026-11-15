@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { AddToCartButton } from '@/components/shop/add-to-cart-button'
 import { PriceLine } from '@/components/shop/price-line'
 import { ProductDetails } from '@/components/shop/product-details'
@@ -10,19 +10,34 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import type { MenuProduct } from '@/queries/menu'
 
 /**
- * Карточка товара. Клик открывает модалку на клиентском состоянии.
- * URL НЕ синхронизируем: history.pushState в Next 16 интегрирован с роутером
- * и вызывает тяжёлую синхронизацию состояния (лаг открытия, §5.22) —
- * шаринг и прямой заход работают через fallback-страницу /product/[id].
+ * Карточка товара. Клик открывает модалку на клиентском состоянии, URL
+ * дополняется хэшем `#product=<id>` через replaceState (ссылку можно передать —
+ * каталог откроется сразу с этой модалкой). Замена записи вместо push/back:
+ * сырой pushState/back в Next 16 конфликтует с управлением историей (§5.22).
+ * Прямой заход на /product/<id> — fallback-страница.
  */
 export function ProductCard({ product }: { product: MenuProduct }) {
 	const [open, setOpen] = useState(false)
+	const hash = `#product=${product.id}`
+
+	// deep-link: /#product=<id> → каталог открывается сразу с модалкой
+	useEffect(() => {
+		if (window.location.hash === hash) setOpen(true)
+	}, [hash])
 
 	const openModal = (e: React.MouseEvent) => {
 		// средний клик/модификаторы — отдаём браузеру (открыть в новой вкладке)
 		if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return
 		e.preventDefault()
 		setOpen(true)
+		window.history.replaceState(null, '', hash)
+	}
+
+	const closeModal = (next: boolean) => {
+		setOpen(next)
+		if (!next) {
+			window.history.replaceState(null, '', window.location.pathname + window.location.search)
+		}
 	}
 
 	return (
@@ -74,7 +89,7 @@ export function ProductCard({ product }: { product: MenuProduct }) {
 				</div>
 			</div>
 
-			<Dialog open={open} onOpenChange={setOpen}>
+			<Dialog open={open} onOpenChange={closeModal}>
 				<DialogContent className='max-h-[calc(100svh-2rem)] overflow-y-auto sm:max-w-md'>
 					<DialogHeader>
 						<DialogTitle>{product.name}</DialogTitle>
