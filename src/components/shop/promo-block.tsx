@@ -29,6 +29,8 @@ type PromoBlockProps = {
  */
 export function PromoBlock({ activePromo, availablePromos, lines, promoQuery }: PromoBlockProps) {
 	const [isPending, startTransition] = useTransition()
+	/** ошибка поля кода живёт здесь: успех карточки/снятия сбрасывает её (не залипает) */
+	const [codeError, setCodeError] = useState<string | null>(null)
 
 	const calcLines = lines.map((line) => ({
 		price: line.price,
@@ -41,6 +43,7 @@ export function PromoBlock({ activePromo, availablePromos, lines, promoQuery }: 
 			const result = await applyPromoCode(code)
 			if (result.data !== null) {
 				toast.success(`Акция «${result.data.name}» применена`)
+				setCodeError(null)
 			} else {
 				toast.error(result.error)
 			}
@@ -52,6 +55,7 @@ export function PromoBlock({ activePromo, availablePromos, lines, promoQuery }: 
 			const result = await removePromoCode()
 			if (result.data !== null) {
 				toast.success('Промокод снят')
+				setCodeError(null)
 			}
 		})
 	}
@@ -128,31 +132,39 @@ export function PromoBlock({ activePromo, availablePromos, lines, promoQuery }: 
 				</div>
 			)}
 
-			<PromoCodeForm initialCode={promoQuery} />
+			<PromoCodeForm initialCode={promoQuery} error={codeError} onErrorChange={setCodeError} />
 		</section>
 	)
 }
 
-function PromoCodeForm({ initialCode }: { initialCode: string }) {
+type PromoCodeFormProps = {
+	initialCode: string
+	/** ошибка принадлежит PromoBlock — сбрасывается при успехе карточек/снятия */
+	error: string | null
+	onErrorChange: (error: string | null) => void
+}
+
+/**
+ * Поле ввода кода: ОК disabled при пустом поле (ошибка «Введите промокод» не
+ * возникает вовсе), правка ввода сбрасывает устаревшую ошибку — иначе она
+ * переживает уход/возврат на страницу (bfcache восстанавливает JS-состояние).
+ */
+function PromoCodeForm({ initialCode, error, onErrorChange }: PromoCodeFormProps) {
 	const [code, setCode] = useState(initialCode)
-	const [error, setError] = useState<string | null>(null)
 	const [isPending, startTransition] = useTransition()
 	const errorId = useId()
 
 	function submit(event: React.FormEvent<HTMLFormElement>) {
 		event.preventDefault()
 		const trimmed = code.trim()
-		if (!trimmed) {
-			setError('Введите промокод')
-			return
-		}
+		if (!trimmed) return // ОК уже disabled — гвард на Enter с пустым полем
 		startTransition(async () => {
 			const result = await applyPromoCode(trimmed)
 			if (result.data !== null) {
 				toast.success(`Акция «${result.data.name}» применена`)
-				setError(null)
+				onErrorChange(null)
 			} else {
-				setError(result.error)
+				onErrorChange(result.error)
 			}
 		})
 	}
@@ -164,14 +176,17 @@ function PromoCodeForm({ initialCode }: { initialCode: string }) {
 				<Input
 					id='promo-code'
 					value={code}
-					onChange={(event) => setCode(event.target.value)}
+					onChange={(event) => {
+						setCode(event.target.value)
+						if (error) onErrorChange(null)
+					}}
 					placeholder='SHAWARMA20'
 					autoCapitalize='characters'
 					className='max-w-48'
 					aria-invalid={error !== null}
 					aria-describedby={error ? errorId : undefined}
 				/>
-				<Button type='submit' disabled={isPending}>
+				<Button type='submit' disabled={isPending || code.trim().length === 0}>
 					ОК
 				</Button>
 			</div>
