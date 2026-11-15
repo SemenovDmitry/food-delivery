@@ -6,6 +6,7 @@ import { db } from '@/db'
 import { cartItems, products } from '@/db/schema'
 import { findCartItem, getOrCreateCart } from '@/lib/cart'
 import { MAX_QTY } from '@/lib/constants'
+import { isUuid } from '@/lib/id'
 import type { ActionResult } from '@/lib/types'
 
 /** Мутация корзины инвалидирует текущий маршрут (§11) */
@@ -20,6 +21,7 @@ export async function addToCart(
 	if (!Number.isInteger(qty) || qty < 1 || qty > MAX_QTY) {
 		return { data: null, error: 'Недопустимое количество' }
 	}
+	if (!isUuid(productId)) return { data: null, error: 'Товар не найден' }
 
 	const [product] = await db
 		.select({ id: products.id })
@@ -50,6 +52,7 @@ export async function setQty(
 	if (!Number.isInteger(qty) || qty < 0 || qty > MAX_QTY) {
 		return { data: null, error: 'Недопустимое количество' }
 	}
+	if (!isUuid(productId)) return { data: null, error: 'Товара нет в корзине' }
 
 	const cart = await getOrCreateCart()
 	const existing = await findCartItem(cart.id, productId)
@@ -68,6 +71,8 @@ export async function setQty(
 export async function removeFromCart(
 	productId: string,
 ): Promise<ActionResult<{ productId: string }>> {
+	if (!isUuid(productId)) return { data: null, error: 'Товара нет в корзине' }
+
 	const cart = await getOrCreateCart()
 	const existing = await findCartItem(cart.id, productId)
 	if (!existing) return { data: null, error: 'Товара нет в корзине' }

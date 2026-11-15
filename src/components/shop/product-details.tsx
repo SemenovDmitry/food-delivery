@@ -3,17 +3,24 @@
 import { Minus, Plus } from 'lucide-react'
 import Image from 'next/image'
 import { useState } from 'react'
+import { AddToCartButton } from '@/components/shop/add-to-cart-button'
 import { PriceLine } from '@/components/shop/price-line'
 import { Button } from '@/components/ui/button'
 import { MAX_QTY } from '@/lib/constants'
 import { formatPrice } from '@/lib/format'
 import type { MenuProduct } from '@/queries/menu'
 
+type ProductDetailsProps = {
+	product: MenuProduct
+	/** вызывается после успешного «В корзину» (в модалке — закрыть диалог) */
+	onAdded?: () => void
+}
+
 /**
- * Тело деталей товара (состав, степпер количества) — общее для модалки
- * в карточке и fallback-страницы /product/[id].
+ * Тело деталей товара (состав, степпер, кнопка с выбранным количеством) —
+ * общее для модалки в карточке и fallback-страницы /product/[id].
  */
-export function ProductDetails({ product }: { product: MenuProduct }) {
+export function ProductDetails({ product, onAdded }: ProductDetailsProps) {
 	const [qty, setQty] = useState(1)
 
 	return (
@@ -77,6 +84,8 @@ export function ProductDetails({ product }: { product: MenuProduct }) {
 					<Plus aria-hidden className='size-4' />
 				</Button>
 			</div>
+
+			<AddToCartButton productId={product.id} qty={qty} size='lg' fullWidth onAdded={onAdded} />
 		</div>
 	)
 }

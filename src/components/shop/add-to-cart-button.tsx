@@ -11,6 +11,8 @@ type AddToCartButtonProps = {
 	qty?: number
 	size?: 'sm' | 'default' | 'lg'
 	fullWidth?: boolean
+	/** колбэк после успешного добавления (в модалке — закрыть диалог) */
+	onAdded?: () => void
 }
 
 /**
@@ -22,6 +24,7 @@ export function AddToCartButton({
 	qty = 1,
 	size = 'sm',
 	fullWidth = false,
+	onAdded,
 }: AddToCartButtonProps) {
 	const [isPending, startTransition] = useTransition()
 	const [optimisticPending, setOptimisticPending] = useOptimistic(
@@ -41,6 +44,7 @@ export function AddToCartButton({
 					const result = await addToCart(productId, qty)
 					if (result.error === null) {
 						toast.success('Добавлено в корзину')
+						onAdded?.()
 					} else {
 						toast.error(result.error)
 					}

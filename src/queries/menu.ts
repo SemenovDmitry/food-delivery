@@ -3,6 +3,7 @@ import { cacheLife, cacheTag } from 'next/cache'
 import { db } from '@/db'
 import type { Product } from '@/db/schema'
 import { categories, products, setItems } from '@/db/schema'
+import { isUuid } from '@/lib/id'
 
 export type MenuSetComponent = {
 	productId: string
@@ -86,6 +87,9 @@ export async function getProduct(id: string): Promise<MenuProduct | null> {
 	'use cache'
 	cacheLife('hours')
 	cacheTag('menu')
+
+	// невалидный uuid (обрезанная ссылка) роняет запрос в Postgres — отсекаем до БД (§5.23)
+	if (!isUuid(id)) return null
 
 	const [product] = await db.select().from(products).where(eq(products.id, id))
 	if (!product) return null

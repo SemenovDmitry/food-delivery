@@ -75,11 +75,12 @@ export function ProductCard({ product }: { product: MenuProduct }) {
 			</div>
 
 			<Dialog open={open} onOpenChange={setOpen}>
-				<DialogContent className='sm:max-w-md'>
+				<DialogContent className='max-h-[calc(100svh-2rem)] overflow-y-auto sm:max-w-md'>
 					<DialogHeader>
 						<DialogTitle>{product.name}</DialogTitle>
 					</DialogHeader>
-					<ProductDetails product={product} />
+					{/* after success — закрываем диалог (шагтер с кнопкой внутри деталей) */}
+					<ProductDetails product={product} onAdded={() => setOpen(false)} />
 				</DialogContent>
 			</Dialog>
 		</article>
