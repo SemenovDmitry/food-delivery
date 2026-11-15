@@ -48,7 +48,7 @@ Next.js 16.4.6 (App Router, Turbopack, Cache Components, Partial Prefetching, Re
 3. **Cache Components**: кешируемые async-функции: `'use cache'` + `cacheLife()` + `cacheTag()`; теги: меню → `'menu'`, акции → `'promos'`, заказы → `'orders'`; после мутаций `revalidateTag()`. Доступ к `cookies()`/`searchParams`/`new Date()` — только в некешируемых скоупах, оборачивать в `<Suspense>`. **Аргументы `'use cache'`-функции — часть кеш-ключа**: время внутрь не передавать (уникальный ключ на каждый момент = кеш никогда не срабатывает). **Акции**: кешируются данные (`isActive = true`), окно `startsAt/endsAt` — фильтр на чтении вне кеша; **страница `/promo` целиком не кешируется** — кешируемая оболочка + список в Suspense, иначе отрендеренный список заморозится.
 4. **pnpm 11**: одобрение сборок — в `pnpm-workspace.yaml` → секция `allowBuilds` (esbuild: true; better-sqlite3 больше нет — Postgres). Поле `pnpm.onlyBuiltDependencies` в package.json игнорируется.
 5. **Drizzle pg-core**: `boolean()` есть; деньги — `integer` (копейки); драйвер postgres-js; `db/index.ts` без mkdir/WAL (это было для SQLite).
-6. **ESLint**: jsx-a11y добавлять ТОЛЬКО правилами (`rules: jsxA11y.flatConfigs.recommended.rules`) — `eslint-config-next` уже регистрирует плагин, полная конфигурация даёт «Cannot redefine plugin jsx-a11y».
+6. **ESLint (ESLint 9 + eslint-config-next@16)**: jsx-a11y — правилами `recommended` из явного devDep `eslint-plugin-jsx-a11y` (pnpm не поднимает транзитивные). ES9 требует плагин в том же конфиг-объекте, где правила, а повторная регистрация даёт «Cannot redefine plugin jsx-a11y» → берём УЖЕ зарегистрированный next-ом инстанс: `nextVitals.find(c => c.plugins?.["jsx-a11y"])?.plugins?.["jsx-a11y"]` — рабочий паттерн в `eslint.config.mjs`. В next-config@16 из recommended входят только 6 правил.
 7. **shadcn 4.x CLI**: `pnpm dlx shadcn@latest init -y -b radix -p nova --css-variables`. Пресет nova ожидает font-переменную `--font-sans` (Geist с cyrillic-сабсетом).
 8. **Темы**: next-themes (attribute=class, system); иконки переключателя — обе рендерятся, видимость через `dark:` классы (без mounted-состояния — React Compiler линт против set-state-in-effect).
 9. **proxy, не middleware** — `src/proxy.ts` (гард /admin: роли admin|manager).
@@ -61,6 +61,9 @@ Next.js 16.4.6 (App Router, Turbopack, Cache Components, Partial Prefetching, Re
 16. **Аутбокс**: событийные уведомления (SMS «заказ готов») — строка `notifications` **в той же транзакции**, что и событие; флушер — `setInterval`-синглтон 30 с: pending → провайдер → sent|failed. Аутбокс — только для событийных уведомлений, не для OTP.
 17. **Оплата**: `PaymentProvider` (`initiate`/`verifyWebhook`) + таблица `payments` (created|processing|paid|failed|cancelled); подтверждение — `POST /api/payments/mock/webhook` с HMAC (`PAYMENTS_WEBHOOK_SECRET`); мок-страница изображает «сайт провайдера»; автоджоба статусов никогда не трогает оплаченные (отмена оплаченных = refund — вне скоупа).
 18. **Env**: zod-валидация при старте (fail-fast); новые переменные: `SMTP_HOST`/`SMTP_PORT` (Mailpit), `DEMO_SMS_OTP_CODE`, `DEMO_AUTO_STATUS`, `DEMO_AUTO_STATUS_INTERVAL`, `PAYMENT_PROVIDER`, `PAYMENTS_WEBHOOK_SECRET`.
+19. **MinIO — образ**: `minio/minio` удалён с Docker Hub (2025, hub возвращает 404), `bitnami/minio` — пустая оболочка без тегов → используем **`bitnamilegacy/minio:latest`** (замороженный последний MinIO, env `MINIO_ROOT_USER`/`MINIO_ROOT_PASSWORD`, 9000 + консоль 9001). Для учебного dev-хранилища приемлемо; замена на managed S3/R2 — §9. quay.io анонимно отдаёт 401 — не вариант.
+20. **Порты на этой машине (WinNAT)**: диапазоны 5256–5555 и 50000–50059 зарезервированы Hyper-V — postgres наружу идёт как **5560:5432** (и в `.env.example`). При переносе на другую машину проверить `netsh interface ipv4 show excludedportrange protocol=tcp`.
+21. **better-auth id — text**: user/session/account/verification используют `text` идентификаторы → ВСЕ FK домена на user (carts.userId, orders.userId) — тоже `text`, не uuid (иначе FK «incompatible types»). Схема: `src/db/schema.ts`.
 
 ## 6. План работ
 
@@ -215,3 +218,13 @@ Issues — локальные markdown-файлы в `.scratch/<feature-slug>/`:
 ### Domain docs
 
 Single-context: `GLOSSARY.md` в корне + ADR в `docs/adr/` (создаются лениво). См. `docs/agents/domain.md`.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+## This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

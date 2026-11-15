@@ -1,0 +1,48 @@
+# Prod-профиль: app (standalone) + postgres + minio. AUTH_SECRET — из окружения.
+services:
+  app:
+    build: .
+    container_name: food-app
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/food_delivery
+      S3_ENDPOINT: http://minio:9000
+      S3_KEY: minioadmin
+      S3_SECRET: minioadmin
+      S3_BUCKET: food-delivery
+      AUTH_SECRET: ${AUTH_SECRET:?AUTH_SECRET обязателен (openssl rand -base64 32)}
+      PAYMENT_PROVIDER: mock
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:17-alpine
+    container_name: food-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: food_delivery
+    volumes:
+      - food-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d food_delivery"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  minio:
+    image: bitnamilegacy/minio:latest # minio/minio удалён с Docker Hub (2025) — см. AGENTS.md §5.19
+    container_name: food-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - food-minio-data:/data
+
+volumes:
+  food-postgres-data:
+  food-minio-data:
