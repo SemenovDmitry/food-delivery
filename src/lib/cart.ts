@@ -55,7 +55,26 @@ export async function getCartLines(cartId: string): Promise<CartLine[]> {
 	return rows
 }
 
-/** Корзина текущего контекста с составом (для чтений вне actions — этап 1) */
+/**
+ * Корзина текущего контекста БЕЗ создания (чтения страниц /cart, /checkout,
+ * бейджа): сессия → корзина по userId, cookie → корзина, иначе null.
+ * Создание корзины и cookie — только в getOrCreateCart (server actions).
+ */
+export async function getCartForRead(): Promise<Cart | null> {
+	const session = await getSession()
+	if (session) {
+		const [userCart] = await db.select().from(carts).where(eq(carts.userId, session.user.id))
+		return userCart ?? null
+	}
+
+	const cookieStore = await cookies()
+	const existingId = cookieStore.get(CART_COOKIE)?.value
+	if (!existingId) return null
+
+	const [found] = await db.select().from(carts).where(eq(carts.id, existingId))
+	return found ?? null
+}
+/** Строка корзины по товару (проверка перед upsert в actions) */
 export async function findCartItem(cartId: string, productId: string) {
 	const [found] = await db
 		.select()

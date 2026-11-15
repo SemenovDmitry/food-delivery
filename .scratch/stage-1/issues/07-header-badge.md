@@ -1,0 +1,13 @@
+# 07: Бейдж корзины в header
+
+**What to build:** Динамический счётчик корзины (Σqty) в шапке как Suspense-слот в кешируемом shell: скрыт при 0, клик ведёт в /cart, обновляется без тегов — server actions сами пере-рендерят маршрут, при навигации динамические скоупы свежие.
+
+**Blocked by:** —
+
+**Status:** resolved
+
+- [x] `CartBadge` — асинхронный серверный компонент: сессия → корзина по userId, иначе cookie `cart_id`, иначе 0; Σqty = Σ(qty строк); без `'use cache'` и тегов (динамика по cookies)
+- [x] `(shop)/layout.tsx` передаёт в клиентский Header слот `<Suspense fallback={скелет}><CartBadge/></Suspense>` (server component как prop — shell остаётся кешируемым)
+- [x] Header: иконка корзины-кнопка → Link на /cart; бейдж скрыт при 0; при > 0 — числовая плашка с aria-label («В корзине N товаров»)
+- [x] Обновление после addToCart/setQty/remove/createOrder — автоматическое (server action пере-рендерит текущий маршрут; навигация перечитывает динамику) — проверяется в приёмке
+- [x] A11y §7: aria-label на кнопке корзины, контраст плашки в обеих темах

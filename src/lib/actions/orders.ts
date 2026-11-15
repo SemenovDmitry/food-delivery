@@ -5,8 +5,10 @@ import { revalidatePath, updateTag } from 'next/cache'
 import { db } from '@/db'
 import { cartItems, carts, orderItems, orders, promotions } from '@/db/schema'
 import { getCartLines, getOrCreateCart } from '@/lib/cart'
-import { isPromoInWindow } from '@/lib/promo'
+import { calcDiscount, isPromoInWindow, toCalcLines } from '@/lib/promo'
+import { deliveryFeeFor } from '@/lib/delivery'
 import { getSession } from '@/lib/session'
+import { getDeliverySettings } from '@/lib/settings'
 import type { ActionResult } from '@/lib/types'
 
 export type CreateOrderPayload = {
@@ -17,9 +19,16 @@ export type CreateOrderPayload = {
 	comment?: string
 }
 
+/** Снятие промокода с корзины (кто виноват — решает вызывающий) */
+async function clearCartPromo(cartId: string) {
+	await db.update(carts).set({ promoId: null, updatedAt: new Date() }).where(eq(carts.id, cartId))
+	revalidatePath('/')
+}
+
 /**
  * createOrder: состав из корзины в БД (не из клиента), снапшот цен,
- * ревалидация промокода, транзакция, revalidateTag('orders') (§5.10).
+ * ревалидация промокода и расчёт доставки на сервере, транзакция,
+ * revalidateTag('orders') (§5.10 + гриллинг этапа 1).
  */
 export async function createOrder(
 	payload: CreateOrderPayload,
@@ -49,21 +58,29 @@ export async function createOrder(
 		return { data: null, error: 'Корзина пуста' }
 	}
 
-	// Ревалидация промокода на сервере: isActive + окно дат (§5.3)
-	let promo: typeof promotions.$inferSelect | null = null
+	// Ревалидация промокода: активен + окно + условия. Протухший промо
+	// снимается с корзины, заказ НЕ создаётся (гриллинг этапа 1, Q12)
+	let promoId: string | null = null
+	let discountAmount = 0
 	if (cart.promoId) {
 		const [found] = await db.select().from(promotions).where(eq(promotions.id, cart.promoId))
-		if (found?.isActive && isPromoInWindow(found, new Date())) {
-			promo = found
+		if (!found?.isActive || !isPromoInWindow(found, new Date())) {
+			await clearCartPromo(cart.id)
+			return { data: null, error: 'Промокод больше не действует' }
 		}
+		const discount = calcDiscount(toCalcLines(lines), found)
+		if (!discount.applicable) {
+			await clearCartPromo(cart.id)
+			return { data: null, error: discount.reason }
+		}
+		promoId = found.id
+		discountAmount = discount.amount
 	}
 
-	const total = lines.reduce((sum, line) => sum + line.product.price * line.qty, 0)
-	const discountAmount = promo
-		? promo.discountType === 'percent'
-			? Math.floor((total * promo.discountValue) / 100)
-			: Math.min(promo.discountValue, total)
-		: 0
+	const subtotal = lines.reduce((sum, line) => sum + line.product.price * line.qty, 0)
+	const delivery = await getDeliverySettings()
+	// Порог бесплатной доставки — от суммы товаров ДО скидки; самовывоз всегда 0
+	const deliveryFee = deliveryFeeFor(fulfillment, subtotal, delivery)
 
 	const session = await getSession()
 
@@ -77,8 +94,9 @@ export async function createOrder(
 				fulfillment,
 				address: fulfillment === 'delivery' ? address : null,
 				comment: comment || null,
-				promoId: promo?.id ?? null,
+				promoId,
 				discountAmount,
+				deliveryFee,
 				status: 'created',
 				paymentStatus: 'pending',
 			})
@@ -107,7 +125,7 @@ export async function createOrder(
 	return { data: { orderId }, error: null }
 }
 
-/** applyPromoCode: валидация на сервере, promo_id на корзину */
+/** applyPromoCode: валидация на сервере (активность, окно, условия), promo_id на корзину */
 export async function applyPromoCode(code: string): Promise<ActionResult<{ name: string }>> {
 	const normalized = code?.trim().toUpperCase() ?? ''
 	if (!normalized) return { data: null, error: 'Введите промокод' }
@@ -117,12 +135,17 @@ export async function applyPromoCode(code: string): Promise<ActionResult<{ name:
 		return { data: null, error: 'Промокод не найден' }
 	}
 
-	const now = new Date()
-	if (!isPromoInWindow(promo, now)) {
+	if (!isPromoInWindow(promo, new Date())) {
 		return { data: null, error: 'Срок действия промокода истёк' }
 	}
 
 	const cart = await getOrCreateCart()
+	const lines = await getCartLines(cart.id)
+	const discount = calcDiscount(toCalcLines(lines), promo)
+	if (!discount.applicable) {
+		return { data: null, error: discount.reason }
+	}
+
 	await db
 		.update(carts)
 		.set({ promoId: promo.id, updatedAt: new Date() })
@@ -130,4 +153,12 @@ export async function applyPromoCode(code: string): Promise<ActionResult<{ name:
 
 	revalidatePath('/')
 	return { data: { name: promo.name }, error: null }
+}
+
+/** removePromoCode: ✕ у активной акции на /cart (гриллинг этапа 1, Q7) */
+export async function removePromoCode(): Promise<ActionResult<{ removed: true }>> {
+	const cart = await getOrCreateCart()
+	await db.update(carts).set({ promoId: null, updatedAt: new Date() }).where(eq(carts.id, cart.id))
+	revalidatePath('/')
+	return { data: { removed: true }, error: null }
 }

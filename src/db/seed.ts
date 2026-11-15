@@ -6,8 +6,8 @@ import { categories, type Product, products, promotions, setItems, user } from '
 /**
  * Идемпотентный сидер: повторный запуск не создаёт дублей.
  * Категории — upsert по slug, продукты — resolve по (category, name),
- * составы сетов — пересоздание, акции — resolve по code (или name для акций без кода),
- * аккаунты — upsert по phoneNumber.
+ * составы сетов — пересоздание, акции — resolve по code (заглушки до
+ * CRUD этапа 5: скоуп-категория + minTotal), аккаунты — upsert по phoneNumber.
  */
 
 type SeedProduct = {
@@ -157,12 +157,27 @@ const SEED_SET_ITEMS: { setName: string; items: { productName: string; qty: numb
 	},
 ]
 
-const SEED_PROMOTIONS = [
+/**
+ * Акции — демо-заглушки до этапа 5 (CRUD в админке, гриллинг этапа 1).
+ * categorySlug — скоуп (null = весь заказ); minTotal — копейки, 0 = без условия.
+ */
+type SeedPromotion = {
+	name: string
+	code: string | null
+	discountType: 'percent' | 'fixed'
+	discountValue: number
+	categorySlug?: string
+	minTotal?: number
+	daysOffset: number
+}
+
+const SEED_PROMOTIONS: SeedPromotion[] = [
 	{
 		name: '−20% на всю шаурму',
 		code: 'SHAWARMA20',
 		discountType: 'percent',
 		discountValue: 20,
+		categorySlug: 'shawarma',
 		daysOffset: 30,
 	},
 	{
@@ -170,6 +185,7 @@ const SEED_PROMOTIONS = [
 		code: 'COMBO150',
 		discountType: 'fixed',
 		discountValue: 15000,
+		categorySlug: 'sets',
 		daysOffset: 30,
 	},
 	{
@@ -177,14 +193,9 @@ const SEED_PROMOTIONS = [
 		code: 'PIZZA300',
 		discountType: 'fixed',
 		discountValue: 30000,
+		categorySlug: 'pizza',
+		minTotal: 100000,
 		daysOffset: 30,
-	},
-	{
-		name: 'Счастливые часы −10%',
-		code: null,
-		discountType: 'percent',
-		discountValue: 10,
-		daysOffset: 7,
 	},
 ]
 
@@ -232,6 +243,7 @@ async function seed() {
 
 	// Проход 1: категории и товары (глобальный реестр по имени — имена уникальны)
 	const globalProducts = new Map<string, Product>()
+	const categoryIds = new Map<string, number>()
 	for (const category of SEED_CATEGORIES) {
 		const [cat] = await db
 			.insert(categories)
@@ -239,6 +251,7 @@ async function seed() {
 			.onConflictDoUpdate({ target: categories.slug, set: { name: category.name } })
 			.returning()
 
+		categoryIds.set(category.slug, cat.id)
 		const productMap = await upsertProducts(cat.id, category.products)
 		for (const [name, product] of productMap) {
 			globalProducts.set(name, product)
@@ -262,12 +275,17 @@ async function seed() {
 	}
 
 	const now = Date.now()
+	// «Счастливые часы» выведены из набора (гриллинг этапа 1: акции без кода
+	// не применяются) — вычищаем остаток сидов этапа 0 по точному имени
+	await db.delete(promotions).where(eq(promotions.name, 'Счастливые часы −10%'))
 	for (const promo of SEED_PROMOTIONS) {
 		const values = {
 			name: promo.name,
 			code: promo.code,
 			discountType: promo.discountType,
 			discountValue: promo.discountValue,
+			categoryId: promo.categorySlug ? (categoryIds.get(promo.categorySlug) ?? null) : null,
+			minTotal: promo.minTotal ?? 0,
 			isActive: true,
 			startsAt: new Date(now - 24 * 60 * 60 * 1000), // окно открыто сутки назад
 			endsAt: new Date(now + promo.daysOffset * 24 * 60 * 60 * 1000),

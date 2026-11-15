@@ -139,12 +139,20 @@ export const setItems = pgTable(
 export const promotions = pgTable('promotions', {
 	id: uuid('id').primaryKey().defaultRandom(),
 	name: text('name').notNull(),
-	/** null → акция без кода («Счастливые часы») */
+	/** null → акция без кода */
 	code: text('code').unique(),
 	/** percent | fixed */
 	discountType: text('discount_type').notNull(),
 	/** percent: 1–99; fixed: копейки */
 	discountValue: integer('discount_value').notNull(),
+	/**
+	 * Скоуп акции (этап 1, гриллинг 2026-11-15): null = скидка на весь заказ,
+	 * заполнено = только на товары категории. restrict — удаление категории
+	 * не превращает «скидку на шаурму» в «скидку на всё» молча.
+	 */
+	categoryId: integer('category_id').references(() => categories.id, { onDelete: 'restrict' }),
+	/** Минимальная сумма товаров корзины (копейки), 0 = без условия */
+	minTotal: integer('min_total').notNull().default(0),
 	/** окно действия — фильтр на чтении ВНЕ кеша (§5.3) */
 	startsAt: timestamp('starts_at'),
 	endsAt: timestamp('ends_at'),
@@ -192,6 +200,8 @@ export const orders = pgTable('orders', {
 	comment: text('comment'),
 	promoId: uuid('promo_id').references(() => promotions.id, { onDelete: 'set null' }),
 	discountAmount: integer('discount_amount').notNull().default(0),
+	/** Копейки, считает сервер (settings + fulfillment), клиент не присылает */
+	deliveryFee: integer('delivery_fee').notNull().default(0),
 	status: text('status').notNull().default('created'),
 	/** pending | paid — под этап 9 */
 	paymentStatus: text('payment_status').notNull().default('pending'),
@@ -209,6 +219,14 @@ export const orderItems = pgTable('order_items', {
 	name: text('name').notNull(),
 	price: integer('price').notNull(),
 	qty: integer('qty').notNull(),
+})
+
+// ─── Настройки (key/value) — этап 1: доставка; форма в админке — этап 5 ─────
+
+export const settings = pgTable('settings', {
+	key: text('key').primaryKey(),
+	value: text('value').notNull(),
+	updatedAt: timestamp('updated_at').notNull().defaultNow(),
 })
 
 // ─── Заделы этапов 9–11 (пустые таблицы) ─────────────────────────────────────
@@ -262,6 +280,7 @@ export type Cart = typeof carts.$inferSelect
 export type CartItem = typeof cartItems.$inferSelect
 export type Order = typeof orders.$inferSelect
 export type OrderItem = typeof orderItems.$inferSelect
+export type Setting = typeof settings.$inferSelect
 export type Payment = typeof payments.$inferSelect
 export type Notification = typeof notifications.$inferSelect
 export type ErrorEvent = typeof errorEvents.$inferSelect

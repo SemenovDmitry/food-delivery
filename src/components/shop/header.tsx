@@ -1,17 +1,23 @@
 'use client'
 
+import { ShoppingBag } from 'lucide-react'
 import Link from 'next/link'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { authClient } from '@/lib/auth-client'
 
+type HeaderProps = {
+	/** Suspense-слот бейджa корзины (CartBadge) — рендерится сервером в layout (тикет 07) */
+	cartSlot: React.ReactNode
+}
+
 /**
  * Клиентский header (§11): навигация + GET-форма поиска `?q` (перенесена с главной
- * 2026-11-15) + ThemeToggle + AuthArea на authClient.useSession().
- * Бейдж корзины добавляется в этапе 1 (динамический фрагмент в Suspense).
+ * 2026-11-15) + бейдж корзины (динамический Suspense-слот, shell кешируемый) +
+ * ThemeToggle + AuthArea на authClient.useSession().
  */
-export function Header() {
+export function Header({ cartSlot }: HeaderProps) {
 	const { data: session, isPending } = authClient.useSession()
 
 	return (
@@ -51,6 +57,12 @@ export function Header() {
 				</search>
 
 				<div className='ml-auto flex items-center gap-2'>
+					<Button variant='ghost' size='sm' asChild className='relative'>
+						<Link href='/cart'>
+							<ShoppingBag aria-hidden className='size-4' />
+							{cartSlot}
+						</Link>
+					</Button>
 					<ThemeToggle />
 					{isPending ? (
 						<div className='h-9 w-20 animate-pulse rounded-md bg-muted' aria-hidden />

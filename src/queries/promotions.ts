@@ -35,3 +35,12 @@ export async function getActivePromotions(): Promise<Promotion[]> {
 	const now = new Date()
 	return promos.filter((p) => isPromoInWindow(p, now))
 }
+
+/**
+ * Сырая акция по id — для активного промо корзины: читаем независимо от
+ * окна/активности, валидность на рендере решает calcDiscount (тикет 04).
+ */
+export async function getPromotionById(id: string): Promise<Promotion | null> {
+	const [found] = await db.select().from(promotions).where(eq(promotions.id, id))
+	return found ?? null
+}
