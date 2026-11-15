@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 import { ProductDetails } from '@/components/shop/product-details'
+import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getProduct } from '@/queries/menu'
 
@@ -19,7 +20,7 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
 export default function ProductPage({ params }: ProductPageProps) {
 	// params — динамическое чтение: в Suspense, await внутри (§5.3)
 	return (
-		<main id='main-content'>
+		<main id='main-content' className='mx-auto max-w-2xl px-4 pb-16 pt-6'>
 			<Suspense fallback={<ProductPageSkeleton />}>
 				<ProductContent params={params} />
 			</Suspense>
@@ -32,15 +33,20 @@ async function ProductContent({ params }: { params: Promise<{ id: string }> }) {
 	const product = await getProduct(id)
 	if (!product) notFound()
 
-	return <ProductDetails product={product} />
+	return (
+		// Card — та же «границы товара», что и на квитанции (в модалке рамку даёт Dialog)
+		<Card>
+			<CardContent>
+				<ProductDetails product={product} />
+			</CardContent>
+		</Card>
+	)
 }
 
 function ProductPageSkeleton() {
 	return (
-		<div className='mx-auto max-w-2xl px-4 py-8' aria-hidden>
-			<Skeleton className='h-8 w-64' />
-			<Skeleton className='mt-4 h-44 w-full rounded-lg' />
-			<Skeleton className='mt-4 h-6 w-40' />
+		<div aria-hidden>
+			<Skeleton className='h-96 w-full rounded-lg' />
 		</div>
 	)
 }
