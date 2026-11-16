@@ -10,7 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import type { OrderStatus } from '@/db/schema'
 import { formatDate, formatPrice } from '@/lib/format'
 import { ACTIVE_STATUSES } from '@/lib/order-timeline'
-import { getSession } from '@/lib/session'
+import { enforceNotBlocked, getSession } from '@/lib/session'
 import type { UserOrder } from '@/queries/orders'
 import { getUserOrders } from '@/queries/orders'
 
@@ -30,6 +30,7 @@ export default function OrdersPage() {
 async function OrdersContent() {
 	const session = await getSession()
 	if (!session) redirect('/login')
+	await enforceNotBlocked() // забаненный/архивированный с живой cookie — срез (этап 5, Q14)
 
 	const allOrders = await getUserOrders(session.user.id)
 	const current = allOrders.find((entry) =>

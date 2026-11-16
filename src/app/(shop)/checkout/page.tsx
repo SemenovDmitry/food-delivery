@@ -3,7 +3,7 @@ import { Suspense } from 'react'
 import { CheckoutForm } from '@/components/shop/checkout-form'
 import { Skeleton } from '@/components/ui/skeleton'
 import { loadCartViewData } from '@/lib/cart-view-data'
-import { getSession } from '@/lib/session'
+import { enforceNotBlocked, getSession } from '@/lib/session'
 
 type CheckoutPageProps = PageProps<'/checkout'>
 
@@ -35,6 +35,7 @@ async function CheckoutContent({
 	}
 
 	const session = await getSession()
+	await enforceNotBlocked() // забаненный/архивированный — срез до подтверждения заказа (этап 5, Q14)
 
 	return (
 		<CheckoutForm

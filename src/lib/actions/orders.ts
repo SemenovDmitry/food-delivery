@@ -3,16 +3,22 @@
 import { and, eq, inArray } from 'drizzle-orm'
 import { revalidatePath, updateTag } from 'next/cache'
 import { db } from '@/db'
+import type { OrderStatus } from '@/db/schema'
 import { cartItems, carts, orderItems, orderStatusEvents, orders, promotions } from '@/db/schema'
 import { getCartLines, getOrCreateCart } from '@/lib/cart'
 import { MAX_QTY } from '@/lib/constants'
 import { deliveryFeeFor } from '@/lib/delivery'
 import { isUuid } from '@/lib/id'
-import { CANCELLABLE_STATUSES } from '@/lib/order-timeline'
+import {
+	CANCELLABLE_STATUSES,
+	type Fulfillment,
+	isOrderStatus,
+	nextStatuses,
+} from '@/lib/order-timeline'
 import { calcDiscount, isPromoInWindow, toCalcLines } from '@/lib/promo'
 import type { CheckoutFormValues } from '@/lib/schemas/checkout'
 import { checkoutFormSchema } from '@/lib/schemas/checkout'
-import { getSession } from '@/lib/session'
+import { enforceNotBlocked, getSession, requireAdmin } from '@/lib/session'
 import { getDeliverySettings } from '@/lib/settings'
 import type { ActionResult } from '@/lib/types'
 
@@ -34,6 +40,7 @@ async function clearCartPromo(cartId: string) {
 export async function createOrder(
 	payload: CreateOrderPayload,
 ): Promise<ActionResult<{ orderId: string }>> {
+	await enforceNotBlocked() // бан/архив режут мутации (этап 5, Q14); гость проходит
 	const parsed = checkoutFormSchema.safeParse(payload)
 	if (!parsed.success) {
 		return {
@@ -122,6 +129,7 @@ export async function createOrder(
 
 /** applyPromoCode: валидация на сервере (активность, окно, условия), promo_id на корзину */
 export async function applyPromoCode(code: string): Promise<ActionResult<{ name: string }>> {
+	await enforceNotBlocked()
 	const normalized = code?.trim().toUpperCase() ?? ''
 	if (!normalized) return { data: null, error: 'Введите промокод' }
 
@@ -165,6 +173,7 @@ export async function removePromoCode(): Promise<ActionResult<{ removed: true }>
  * onDelete: set null) пропускаются — added считает только добавленные позиции.
  */
 export async function repeatOrder(orderId: string): Promise<ActionResult<{ added: number }>> {
+	await enforceNotBlocked()
 	// кривой uuid роняет запрос в Postgres — отсекаем до БД (§5.24)
 	if (!isUuid(orderId)) return { data: null, error: 'Заказ не найден' }
 
@@ -212,6 +221,7 @@ export async function repeatOrder(orderId: string): Promise<ActionResult<{ added
  * а заказ уже готовится» возвращает ошибку, а не отменяет после ready.
  */
 export async function cancelOrder(orderId: string): Promise<ActionResult<{ cancelled: true }>> {
+	await enforceNotBlocked()
 	// кривой uuid роняет запрос в Postgres — отсекаем до БД (§5.24)
 	if (!isUuid(orderId)) return { data: null, error: 'Заказ не найден' }
 
@@ -247,4 +257,58 @@ export async function cancelOrder(orderId: string): Promise<ActionResult<{ cance
 
 	revalidatePath('/orders')
 	return { data: { cancelled: true }, error: null }
+}
+
+/**
+ * Смена статуса админкой (этап 5, Q3): только по карте nextStatuses (вперёд по
+ * своему fulfillment), оплаченные не отменяются никогда (refund — этап 9).
+ * Гонка гасится conditional UPDATE в транзакции (паттерн cancelOrder); строка
+ * в order_status_events — в той же транзакции (писатели статуса не ходят мимо
+ * таблицы, Q15a этапа 4). SMS «заказ готов» — этап 10, здесь граница.
+ */
+export async function updateOrderStatus(
+	orderId: string,
+	next: string,
+): Promise<ActionResult<{ status: OrderStatus }>> {
+	await requireAdmin() // живой гвард (этап 5, Q14); не-admin → срез сессии + /login
+
+	// кривой uuid роняет запрос в Postgres — отсекаем до БД (§5.24)
+	if (!isUuid(orderId)) return { data: null, error: 'Заказ не найден' }
+	if (!isOrderStatus(next)) return { data: null, error: 'Недопустимый статус' }
+
+	const [order] = await db
+		.select({
+			status: orders.status,
+			paymentStatus: orders.paymentStatus,
+			fulfillment: orders.fulfillment,
+		})
+		.from(orders)
+		.where(eq(orders.id, orderId))
+	if (!order) return { data: null, error: 'Заказ не найден' }
+	if (!isOrderStatus(order.status)) return { data: null, error: 'Заказ в недопустимом статусе' }
+
+	const fulfillment: Fulfillment = order.fulfillment === 'pickup' ? 'pickup' : 'delivery'
+	if (!nextStatuses(order.status, fulfillment).includes(next)) {
+		return { data: null, error: 'Недопустимый переход статуса' }
+	}
+	if (next === 'cancelled_by_vendor' && order.paymentStatus !== 'pending') {
+		return { data: null, error: 'Оплаченный заказ отменить нельзя' }
+	}
+
+	const updated = await db.transaction(async (tx) => {
+		const rows = await tx
+			.update(orders)
+			.set({ status: next, updatedAt: new Date() })
+			.where(and(eq(orders.id, orderId), eq(orders.status, order.status)))
+			.returning({ id: orders.id })
+		if (rows.length === 0) return false // гонка: статус ушёл вперёд между select и update
+		await tx.insert(orderStatusEvents).values({ orderId, status: next })
+		return true
+	})
+
+	if (!updated) return { data: null, error: 'Статус уже изменён — обновите список' }
+
+	updateTag('orders')
+	revalidatePath('/admin/orders')
+	return { data: { status: next }, error: null }
 }

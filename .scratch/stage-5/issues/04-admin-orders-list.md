@@ -4,7 +4,7 @@
 
 **Blocked by:** 03
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] Query: фильтр + пагинация + count
 - [ ] Чипы `?status=` (searchParams, RSC)

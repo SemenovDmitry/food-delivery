@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto'
+import { CreateBucketCommand, HeadBucketCommand, PutBucketPolicyCommand } from '@aws-sdk/client-s3'
 import { and, eq } from 'drizzle-orm'
+import { S3_BUCKET, s3Client } from '../lib/s3'
 import { db } from './index'
 import { categories, type Product, products, promotions, setItems, user } from './schema'
 
@@ -225,7 +227,7 @@ async function upsertProducts(
 	const existing = await db.select().from(products).where(eq(products.categoryId, categoryId))
 	const byName = new Map(existing.map((p) => [p.name, p]))
 
-	for (const sp of seedProducts) {
+	for (const [position, sp] of seedProducts.entries()) {
 		const values = {
 			categoryId,
 			name: sp.name,
@@ -233,6 +235,9 @@ async function upsertProducts(
 			price: sp.price,
 			type: sp.type ?? 'single',
 			emoji: sp.emoji,
+			// position пишется и при update: сид задаёт канонический порядок (этап 5);
+			// порядок из админ-сортировки живёт до явного `pnpm db:seed`
+			position,
 		}
 		const found = byName.get(sp.name)
 		if (found) {
@@ -250,17 +255,52 @@ async function upsertProducts(
 	return result
 }
 
+/**
+ * Бакет для фото товаров (этап 5, Q8): идемпотентное создание + public-read
+ * policy — next/image-оптимизатор фетчит анонимным GET без подписи.
+ * MinIO недоступен → warn, сид БД не роняем (фото можно залить позже).
+ */
+async function ensureBucket(): Promise<void> {
+	try {
+		try {
+			await s3Client.send(new HeadBucketCommand({ Bucket: S3_BUCKET }))
+		} catch {
+			await s3Client.send(new CreateBucketCommand({ Bucket: S3_BUCKET }))
+			console.log(`Seed: бакет ${S3_BUCKET} создан`)
+		}
+		const policy = {
+			Version: '2012-10-17',
+			Statement: [
+				{
+					Effect: 'Allow',
+					Principal: { AWS: ['*'] },
+					Action: ['s3:GetObject'],
+					Resource: [`arn:aws:s3:::${S3_BUCKET}/*`],
+				},
+			],
+		}
+		await s3Client.send(
+			new PutBucketPolicyCommand({ Bucket: S3_BUCKET, Policy: JSON.stringify(policy) }),
+		)
+	} catch (error) {
+		console.warn(
+			`Seed: MinIO недоступен (${error instanceof Error ? error.message : error}) — бакет и policy не применены`,
+		)
+	}
+}
+
 async function seed() {
 	console.log('Seed: старт…')
+	await ensureBucket()
 
 	// Проход 1: категории и товары (глобальный реестр по имени — имена уникальны)
 	const globalProducts = new Map<string, Product>()
 	const categoryIds = new Map<string, number>()
-	for (const category of SEED_CATEGORIES) {
+	for (const [position, category] of SEED_CATEGORIES.entries()) {
 		const [cat] = await db
 			.insert(categories)
-			.values({ slug: category.slug, name: category.name })
-			.onConflictDoUpdate({ target: categories.slug, set: { name: category.name } })
+			.values({ slug: category.slug, name: category.name, position })
+			.onConflictDoUpdate({ target: categories.slug, set: { name: category.name, position } })
 			.returning()
 
 		categoryIds.set(category.slug, cat.id)

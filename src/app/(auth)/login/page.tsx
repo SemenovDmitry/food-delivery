@@ -17,10 +17,24 @@ export default function LoginPage({ searchParams }: PageProps<'/login'>) {
 	)
 }
 
+/** Причины принудительного среза сессии (этап 5, Q14) — banner на форме входа */
+const NOTICES: Record<string, string> = {
+	banned: 'Аккаунт заблокирован',
+	deleted: 'Аккаунт удалён',
+	role: 'Права доступа изменились — войдите заново',
+}
+
 /** Гард (сессия → уходим) и redirect-параметр — в некешируемом скоупе (§5.3) */
-async function LoginContent({ searchParams }: { searchParams: Promise<{ redirect?: string }> }) {
+async function LoginContent({
+	searchParams,
+}: {
+	searchParams: Promise<{ redirect?: string; notice?: string }>
+}) {
 	const [session, params] = await Promise.all([getSession(), searchParams])
-	if (session) redirect(safeRedirectPath(params.redirect))
+	const notice = params.notice ? NOTICES[params.notice] : undefined
+	// после среза гардом сессия может оставаться живой (из RSC cookie не мутировать,
+	// см. cutAccess) — явный notice важнее автоперенаправления
+	if (session && !notice) redirect(safeRedirectPath(params.redirect))
 
 	return (
 		<Card>
@@ -30,6 +44,14 @@ async function LoginContent({ searchParams }: { searchParams: Promise<{ redirect
 				<CardDescription>Вход по телефону — код придёт в SMS (демо: 1111)</CardDescription>
 			</CardHeader>
 			<CardContent>
+				{notice ? (
+					<p
+						role='alert'
+						className='mb-4 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm'
+					>
+						{notice}
+					</p>
+				) : null}
 				<AuthPhoneWizard mode='login' redirectTo={safeRedirectPath(params.redirect)} />
 			</CardContent>
 		</Card>

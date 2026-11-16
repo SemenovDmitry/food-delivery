@@ -1,12 +1,13 @@
 'use server'
 
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { db } from '@/db'
 import { cartItems, products } from '@/db/schema'
 import { findCartItem, getOrCreateCart } from '@/lib/cart'
 import { MAX_QTY } from '@/lib/constants'
 import { isUuid } from '@/lib/id'
+import { enforceNotBlocked } from '@/lib/session'
 import type { ActionResult } from '@/lib/types'
 
 /** Мутация корзины инвалидирует текущий маршрут (§11) */
@@ -18,6 +19,7 @@ export async function addToCart(
 	productId: string,
 	qty = 1,
 ): Promise<ActionResult<{ productId: string; qty: number }>> {
+	await enforceNotBlocked() // бан/архив режут мутации (этап 5, Q14); гость проходит
 	if (!Number.isInteger(qty) || qty < 1 || qty > MAX_QTY) {
 		return { data: null, error: 'Недопустимое количество' }
 	}
@@ -26,7 +28,9 @@ export async function addToCart(
 	const [product] = await db
 		.select({ id: products.id })
 		.from(products)
-		.where(eq(products.id, productId))
+		.where(and(eq(products.id, productId), eq(products.isActive, true)))
+	// isActive: деактивированный (скрытый из каталога, Q16) не добавляется заново;
+	// уже лежащий в корзине — остаётся и заказывается (деактивация корзину не трогает)
 	if (!product) return { data: null, error: 'Товар не найден' }
 
 	const cart = await getOrCreateCart()
@@ -49,6 +53,7 @@ export async function setQty(
 	productId: string,
 	qty: number,
 ): Promise<ActionResult<{ productId: string; qty: number }>> {
+	await enforceNotBlocked()
 	if (!Number.isInteger(qty) || qty < 0 || qty > MAX_QTY) {
 		return { data: null, error: 'Недопустимое количество' }
 	}
@@ -71,6 +76,7 @@ export async function setQty(
 export async function removeFromCart(
 	productId: string,
 ): Promise<ActionResult<{ productId: string }>> {
+	await enforceNotBlocked()
 	if (!isUuid(productId)) return { data: null, error: 'Товара нет в корзине' }
 
 	const cart = await getOrCreateCart()

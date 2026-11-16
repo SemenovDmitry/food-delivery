@@ -64,9 +64,9 @@ export function ProductCard({ product }: { product: MenuProduct }) {
 				className='flex h-36 items-center justify-center bg-muted text-5xl'
 				aria-label={`Открыть «${product.name}»`}
 			>
-				{product.imageUrl ? (
+				{product.imageSrc ? (
 					<Image
-						src={product.imageUrl}
+						src={product.imageSrc}
 						alt={product.name}
 						width={288}
 						height={144}

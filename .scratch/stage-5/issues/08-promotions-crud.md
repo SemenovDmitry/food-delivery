@@ -4,7 +4,7 @@
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] `getAllPromotions()` без фильтров
 - [ ] Схема + actions (create/update/setActive/delete + updateTag('promos'))

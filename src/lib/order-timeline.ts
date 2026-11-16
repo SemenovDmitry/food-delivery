@@ -38,3 +38,35 @@ export function isOrderStatus(value: string): value is OrderStatus {
 export function isTerminalStatus(value: string): boolean {
 	return isOrderStatus(value) && TERMINAL_STATUSES.includes(value)
 }
+
+/** Тип исполнения заказа: ветка цепочки статусов (GLOSSARY «Fulfillment») */
+export type Fulfillment = 'delivery' | 'pickup'
+
+/**
+ * Легальные следующие статусы для админ-смены (этап 5, Q3): только вперёд по
+ * цепочке своего fulfillment, назад никогда; `cancelled_by_vendor` — из
+ * created|preparing|ready. Оплаченные не отменяются (refund — этап 9):
+ * гвард paymentStatus живёт в action, карта статусов об оплате не знает.
+ * Чистая (client-safe): опции select'а в /admin/orders и серверная валидация.
+ */
+export function nextStatuses(
+	status: OrderStatus,
+	fulfillment: Fulfillment,
+): readonly OrderStatus[] {
+	if (isTerminalStatus(status)) return []
+	const vendorCancel: readonly OrderStatus[] = ['cancelled_by_vendor']
+	switch (status) {
+		case 'created':
+			return ['preparing', ...vendorCancel]
+		case 'preparing':
+			return ['ready', ...vendorCancel]
+		case 'ready':
+			return fulfillment === 'delivery'
+				? ['in_delivery', ...vendorCancel]
+				: ['picked_up', ...vendorCancel]
+		case 'in_delivery':
+			return ['delivered']
+		default:
+			return []
+	}
+}

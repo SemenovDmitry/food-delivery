@@ -4,11 +4,12 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] `src/proxy.ts` по докам v16 — fast-fail redirect
-- [ ] Живая проверка (role/banned_at/deleted_at) + signOut-редирект в `lib/session.ts`
-- [ ] Admin-only хелпер (manager → `/admin/orders`)
-- [ ] `(admin)` layout: нав по роли, активный пункт, landmarks
-- [ ] `/admin` → redirect `/admin/orders`
-- [ ] Приёмка: гость → `/login`; customer → `/login`; manager на `/admin/products` → `/admin/orders`; забаненный admin при живой сессии → signOut на следующем запросе
+- [x] `src/proxy.ts` по докам v16 — fast-fail redirect (named export `proxy` + `config.matcher`; cookie-проверка по суффиксу имени — `.session_token`/`.session_data`, конфигурация-независимо; живая авторизация осталась в layout, доки: proxy — не место для авторизации)
+- [x] Живая проверка (role/banned_at/deleted_at) + signOut-редирект в `lib/session.ts` (`enforceNotBlocked` / `requireAdmin` / `requireAdminOnly`; нюанс: signOut мутирует cookie — из RSC только redirect, каждый guarded-запрос всё равно режется живой проверкой)
+- [x] Admin-only хелпер (manager → `/admin/orders`) — route group `src/app/admin/(admin-only)/layout.tsx`
+- [x] `(admin)` layout: nav по роли (`components/admin/admin-nav.tsx`, usePathname внутри Suspense — §5.30), активный пункт, landmarks
+- [x] `/admin` → redirect `/admin/orders`
+- [x] Бан режет мутации магазина: `enforceNotBlocked` в cart-actions, createOrder/cancelOrder/repeatOrder/applyPromoCode, страницы /orders и /checkout; баннер `?notice=` на /login (banned/deleted/role)
+- [x] tsc зелёный; приёмка гвардов — тикет 11 (браузер)

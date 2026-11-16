@@ -25,9 +25,9 @@ export function ProductDetails({ product, onAdded }: ProductDetailsProps) {
 	return (
 		<div className='flex flex-col gap-4'>
 			<div className='flex h-44 items-center justify-center rounded-lg bg-muted text-6xl'>
-				{product.imageUrl ? (
+				{product.imageSrc ? (
 					<Image
-						src={product.imageUrl}
+						src={product.imageSrc}
 						alt={product.name}
 						width={352}
 						height={176}

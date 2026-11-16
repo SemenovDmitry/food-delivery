@@ -52,6 +52,10 @@ export const user = pgTable('user', {
 	/** phone-number plugin: вход по телефону, SMS-OTP (фейк 1111, §5.15) */
 	phoneNumber: text('phone_number').unique(),
 	phoneNumberVerified: boolean('phone_number_verified').notNull().default(false),
+	/** Бан (этап 5, Q14): наказание — режет вход и guarded-запросы; независим от deleted_at */
+	bannedAt: timestamp('banned_at'),
+	/** Архив (этап 5, Q24): софт-удаление — скрыт из списков админки, заказы остаются атрибутированными */
+	deletedAt: timestamp('deleted_at'),
 })
 
 export const session = pgTable('session', {
@@ -100,6 +104,8 @@ export const categories = pgTable('categories', {
 	id: serial('id').primaryKey(),
 	slug: text('slug').notNull().unique(), // pizza | shawarma | sets | drinks | desserts — идентификаторы якорей
 	name: text('name').notNull(),
+	/** Порядок на витрине и в sticky-навигации (этап 5, Q17); пишется DnD-сортировкой в админке */
+	position: integer('position').notNull().default(0),
 })
 
 export const products = pgTable('products', {
@@ -114,7 +120,11 @@ export const products = pgTable('products', {
 	/** single | set */
 	type: text('type').notNull().default('single'),
 	emoji: text('emoji').notNull().default('🍽️'), // фолбэк, пока нет фото
-	imageUrl: text('image_url'), // MinIO, этап 5
+	imageUrl: text('image_url'), // MinIO, этап 5 — хранится КЛЮЧ объекта, URL строит imageUrlFor() из env (Q7)
+	/** Скрытие из каталога без удаления (этап 5, Q16): корзину не трогает */
+	isActive: boolean('is_active').notNull().default(true),
+	/** Порядок внутри категории (этап 5, Q26); новый товар = max+1 своей категории */
+	position: integer('position').notNull().default(0),
 	createdAt: timestamp('created_at').notNull().defaultNow(),
 	updatedAt: timestamp('updated_at').notNull().defaultNow(),
 })

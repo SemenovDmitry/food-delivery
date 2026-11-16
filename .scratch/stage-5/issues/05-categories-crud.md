@@ -4,7 +4,7 @@
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] dnd-kit + sortable-компонент с keyboard-сенсором
 - [ ] Схема + actions (create/update/reorder/delete + гварды + `updateTag('menu')`)

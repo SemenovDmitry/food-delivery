@@ -1,9 +1,9 @@
-import { and, asc, eq } from 'drizzle-orm'
+import { and, asc, count, desc, eq } from 'drizzle-orm'
 import { cacheLife, cacheTag } from 'next/cache'
 import { connection } from 'next/server'
 import { db } from '@/db'
 import type { Promotion } from '@/db/schema'
-import { promotions } from '@/db/schema'
+import { categories, promotions } from '@/db/schema'
 import { filterPromosInWindow } from '@/lib/promo'
 
 /**
@@ -49,4 +49,39 @@ export async function getActivePromotions(): Promise<Promotion[]> {
 export async function getPromotionById(id: string): Promise<Promotion | null> {
 	const [found] = await db.select().from(promotions).where(eq(promotions.id, id))
 	return found ?? null
+}
+
+// ─── Админка (этап 5) ────────────────────────────────────────────────────────
+
+export type AdminPromotionRow = Promotion & { categoryName: string | null }
+
+/**
+ * ВСЕ акции без фильтров (задел комментария этапа 2 выше) — таблица
+ * /admin/promotions: isActive/isPublic видны админу, скрытые промокоды тоже.
+ * Без кеша: админские данные. Пагинация (Q19).
+ */
+export async function getAllPromotions({
+	page,
+	perPage,
+}: {
+	page: number
+	perPage: number
+}): Promise<{ rows: AdminPromotionRow[]; total: number }> {
+	const rows = await db
+		.select({
+			promotion: promotions,
+			categoryName: categories.name,
+		})
+		.from(promotions)
+		.leftJoin(categories, eq(promotions.categoryId, categories.id))
+		.orderBy(desc(promotions.createdAt))
+		.limit(perPage)
+		.offset((page - 1) * perPage)
+
+	const [{ value: total }] = await db.select({ value: count() }).from(promotions)
+
+	return {
+		rows: rows.map(({ promotion, categoryName }) => ({ ...promotion, categoryName })),
+		total,
+	}
 }

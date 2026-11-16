@@ -4,7 +4,7 @@
 
 **Blocked by:** 01, 05
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] Схема + actions (create/update/setActive/delete/reorder + гварды + updateTag)
 - [ ] Список: чипы `?category=`, пагинация+perPage, бейджи

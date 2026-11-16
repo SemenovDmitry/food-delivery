@@ -4,7 +4,7 @@
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] `nextStatuses(status, fulfillment)` + экспорт из `lib/order-timeline.ts`
 - [ ] Action: гарды (live-сессия, карта, paid) + транзакция (conditional UPDATE + events)

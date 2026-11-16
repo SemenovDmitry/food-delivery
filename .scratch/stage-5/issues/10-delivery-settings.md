@@ -4,7 +4,7 @@
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] Схема + страница + форма (рубли → копейки, превью)
 - [ ] Upsert в settings через `getDeliverySettings()`-совместимые ключи

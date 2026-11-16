@@ -1,7 +1,8 @@
-import { asc, desc, eq, inArray } from 'drizzle-orm'
+import { asc, count, desc, eq, inArray } from 'drizzle-orm'
 import { db } from '@/db'
 import type { Order, OrderItem, Promotion } from '@/db/schema'
 import { orderItems, orders, promotions } from '@/db/schema'
+import { ACTIVE_STATUSES, isOrderStatus, TERMINAL_STATUSES } from '@/lib/order-timeline'
 
 export type OrderDetails = {
 	order: Order
@@ -60,4 +61,77 @@ export async function getUserOrders(userId: string): Promise<UserOrder[]> {
 		order,
 		items: items.filter((item) => item.orderId === order.id),
 	}))
+}
+
+// ─── Админка (этап 5) ────────────────────────────────────────────────────────
+
+export type AdminOrderRow = {
+	order: Order
+	/** Σ позиций (шт) */
+	itemCount: number
+	/** формула квитанции: Σ позиций − скидка + доставка */
+	total: number
+}
+
+/**
+ * Все заказы для /admin/orders (этап 5, Q10/Q19): фильтр по статусу
+ * (все/активные/терминальные/конкретный), новые сверху, пагинация.
+ * Без 'use cache' — персональные данные (§11); СВОБОДНО от §5.29: мутации
+ * статуса (updateOrderStatus) зовут updateTag('orders') + revalidatePath.
+ */
+export async function getAdminOrders({
+	filter,
+	page,
+	perPage,
+}: {
+	filter: string
+	page: number
+	perPage: number
+}): Promise<{
+	rows: AdminOrderRow[]
+	total: number
+}> {
+	const where =
+		filter === 'active'
+			? inArray(orders.status, [...ACTIVE_STATUSES])
+			: filter === 'terminal'
+				? inArray(orders.status, [...TERMINAL_STATUSES])
+				: isOrderStatus(filter)
+					? eq(orders.status, filter)
+					: undefined
+
+	const list = await db
+		.select()
+		.from(orders)
+		.where(where)
+		.orderBy(desc(orders.createdAt))
+		.limit(perPage)
+		.offset((page - 1) * perPage)
+	const [{ value: total }] = await db.select({ value: count() }).from(orders).where(where)
+	if (list.length === 0) return { rows: [], total }
+
+	const items = await db
+		.select({ orderId: orderItems.orderId, price: orderItems.price, qty: orderItems.qty })
+		.from(orderItems)
+		.where(
+			inArray(
+				orderItems.orderId,
+				list.map((order) => order.id),
+			),
+		)
+
+	return {
+		rows: list.map((order) => {
+			const own = items.filter((item) => item.orderId === order.id)
+			return {
+				order,
+				itemCount: own.reduce((sum, item) => sum + item.qty, 0),
+				total:
+					own.reduce((sum, item) => sum + item.price * item.qty, 0) -
+					order.discountAmount +
+					order.deliveryFee,
+			}
+		}),
+		total,
+	}
 }

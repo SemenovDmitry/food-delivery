@@ -39,10 +39,13 @@ export async function sendLoginOtp(phoneRaw: string): Promise<ActionResult<null>
 	}
 
 	const [found] = await db
-		.select({ id: user.id })
+		.select({ id: user.id, bannedAt: user.bannedAt, deletedAt: user.deletedAt })
 		.from(user)
 		.where(eq(user.phoneNumber, parsed.data))
 	if (!found) return { data: null, error: 'Номер не зарегистрирован — зарегистрируйтесь' }
+	// бан/архив (этап 5, Q14/Q24): SMS не уходит, до better-auth не доходит
+	if (found.deletedAt) return { data: null, error: 'Аккаунт удалён' }
+	if (found.bannedAt) return { data: null, error: 'Аккаунт заблокирован' }
 
 	return sendPhoneOtp(parsed.data)
 }

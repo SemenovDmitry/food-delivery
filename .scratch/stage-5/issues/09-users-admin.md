@@ -4,7 +4,7 @@
 
 **Blocked by:** 01, 02
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] Query: поиск + Σзаказов + пагинация, фильтр archived
 - [ ] Страница: таблица + ban/unban/archive с self-guard

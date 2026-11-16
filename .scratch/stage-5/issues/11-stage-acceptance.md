@@ -4,7 +4,7 @@
 
 **Blocked by:** 03, 04, 05, 06, 07, 08, 09, 10
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] Браузерный сценарий целиком, скриншоты сняты
 - [ ] lint/tsc/build зелёные

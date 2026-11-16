@@ -15,6 +15,10 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # Заглушка только на СБОРКУ (better-auth валидирует секрет при инициализации модуля;
 # нейтральное имя — чтобы не триггерить BuildKit SecretsUsedInArgOrEnv)
 ENV AUTH_SECRET_BUILD_FALLBACK=docker-build-placeholder-not-a-secret
+# next.config печётся на build (§5.3): remotePatterns картинок вычисляется из
+# S3_ENDPOINT, которого в build-стадии нет — фолбэк на prod-хост compose
+# (в рантайме runner использует настоящий S3_ENDPOINT из environment)
+ENV S3_ENDPOINT_BUILD_FALLBACK=http://minio:9000
 RUN pnpm build
 
 FROM base AS runner

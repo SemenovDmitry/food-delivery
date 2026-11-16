@@ -4,7 +4,7 @@
 
 **Blocked by:** 06
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] Deps + allowBuilds (если pnpm попросит)
 - [ ] `lib/s3.ts`: клиент + `imageUrlFor` + upload/remove

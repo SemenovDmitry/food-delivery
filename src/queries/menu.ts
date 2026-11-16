@@ -4,6 +4,7 @@ import { db } from '@/db'
 import type { Product } from '@/db/schema'
 import { categories, products, setItems } from '@/db/schema'
 import { isUuid } from '@/lib/id'
+import { imageUrlFor } from '@/lib/s3'
 
 export type MenuSetComponent = {
 	productId: string
@@ -17,6 +18,11 @@ export type MenuProduct = Product & {
 	setComponents: MenuSetComponent[]
 	/** сумма цен компонентов — зачёркнутая старая цена сета (GLOSSARY «Сет») */
 	setOldPrice: number | null
+	/**
+	 * Полный URL фото (imageUrl хранит КЛЮЧ, Q7): строится на сервере из env
+	 * текущего окружения — клиент env не видит, кеш — на deployment-скоуп.
+	 */
+	imageSrc: string | null
 }
 
 export type MenuCategory = {
@@ -35,11 +41,16 @@ export async function getFullMenu(): Promise<MenuCategory[]> {
 	cacheLife('hours')
 	cacheTag('menu')
 
-	const cats = await db.select().from(categories).orderBy(asc(categories.id))
+	// порядок витрины задаётся админ-сортировкой (этап 5, Q26): категории по
+	// position, товары внутри категории тоже по position (fallback — id/name)
+	const cats = await db
+		.select()
+		.from(categories)
+		.orderBy(asc(categories.position), asc(categories.id))
 	const allProducts = await db
 		.select()
 		.from(products)
-		.orderBy(asc(products.price), asc(products.name))
+		.orderBy(asc(products.position), asc(products.name))
 	const items = await db
 		.select({
 			setId: setItems.setId,
@@ -70,14 +81,19 @@ export async function getFullMenu(): Promise<MenuCategory[]> {
 		slug: cat.slug,
 		name: cat.name,
 		products: allProducts
-			.filter((p) => p.categoryId === cat.id)
+			.filter((p) => p.categoryId === cat.id && p.isActive)
 			.map((p): MenuProduct => {
 				if (p.type !== 'set') {
-					return { ...p, setComponents: [], setOldPrice: null }
+					return { ...p, setComponents: [], setOldPrice: null, imageSrc: imageUrlFor(p.imageUrl) }
 				}
 				const components = componentsBySet.get(p.id) ?? []
 				const oldPrice = components.reduce((sum, c) => sum + c.price * c.qty, 0)
-				return { ...p, setComponents: components, setOldPrice: oldPrice }
+				return {
+					...p,
+					setComponents: components,
+					setOldPrice: oldPrice,
+					imageSrc: imageUrlFor(p.imageUrl),
+				}
 			}),
 	}))
 }
@@ -114,5 +130,6 @@ export async function getProduct(id: string): Promise<MenuProduct | null> {
 		...product,
 		setComponents: product.type === 'set' ? components : [],
 		setOldPrice: product.type === 'set' ? oldPrice : null,
+		imageSrc: imageUrlFor(product.imageUrl),
 	}
 }
