@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 import { CopyLinkButton } from '@/components/shop/copy-link-button'
 import { OrderTotals } from '@/components/shop/order-totals'
+import { RepeatOrderButton } from '@/components/shop/repeat-order-button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
@@ -43,6 +44,9 @@ async function ReceiptContent({ params }: { params: Promise<{ id: string }> }) {
 
 	return (
 		<div className='pt-6'>
+			<div className='flex justify-end pb-3'>
+				<RepeatOrderButton orderId={order.id} />
+			</div>
 			<Card>
 				<CardHeader>
 					<CardTitle className='flex flex-wrap items-center gap-2'>

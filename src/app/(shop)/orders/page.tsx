@@ -1,3 +1,4 @@
+import { cn } from 'cn'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
@@ -108,29 +109,35 @@ function OrderCard({ entry, current = false }: { entry: UserOrder; current?: boo
 	const totalQty = items.reduce((sum, item) => sum + item.qty, 0)
 
 	return (
-		<Card className={current ? 'border-primary/40' : undefined}>
-			<CardHeader>
-				<CardTitle className='flex flex-wrap items-center gap-2'>
-					Заказ № {order.id.slice(0, 8)}
-					<Badge variant='secondary'>
-						{/* status — text-колонка: невалидное значение не маскируем кастомом (ревью S7) */}
-						{STATUS_LABELS[order.status as OrderStatus] ?? order.status}
-					</Badge>
-				</CardTitle>
-			</CardHeader>
-			<CardContent className='flex flex-wrap items-center justify-between gap-3'>
-				<div className='text-sm text-muted-foreground'>
+		// вся карточка — ссылка (2026-11-16): кнопка «Открыть» убрана
+		<Link
+			href={`/orders/${order.id}`}
+			className='group/card block rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary'
+		>
+			<Card
+				className={cn(
+					'transition-[--tw-ring-color] group-hover/card:ring-primary/40',
+					current && 'ring-primary/40',
+				)}
+			>
+				<CardHeader>
+					<CardTitle className='flex flex-wrap items-center gap-2'>
+						Заказ № {order.id.slice(0, 8)}
+						<Badge variant='secondary'>
+							{/* status — text-колонка: невалидное значение не маскируем кастомом (ревью S7) */}
+							{STATUS_LABELS[order.status as OrderStatus] ?? order.status}
+						</Badge>
+					</CardTitle>
+				</CardHeader>
+				<CardContent className='text-sm text-muted-foreground'>
 					<span>{formatDate(order.createdAt)}</span>
 					<span aria-hidden> · </span>
 					<span>{totalQty} шт.</span>
 					<span aria-hidden> · </span>
 					<span className='font-medium text-foreground tabular-nums'>{formatPrice(total)}</span>
-				</div>
-				<Button variant='outline' size='sm' asChild>
-					<Link href={`/orders/${order.id}`}>Открыть</Link>
-				</Button>
-			</CardContent>
-		</Card>
+				</CardContent>
+			</Card>
+		</Link>
 	)
 }
 

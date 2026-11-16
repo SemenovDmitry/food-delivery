@@ -1,11 +1,13 @@
 'use server'
 
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { revalidatePath, updateTag } from 'next/cache'
 import { db } from '@/db'
 import { cartItems, carts, orderItems, orders, promotions } from '@/db/schema'
 import { getCartLines, getOrCreateCart } from '@/lib/cart'
+import { MAX_QTY } from '@/lib/constants'
 import { deliveryFeeFor } from '@/lib/delivery'
+import { isUuid } from '@/lib/id'
 import { calcDiscount, isPromoInWindow, toCalcLines } from '@/lib/promo'
 import type { CheckoutFormValues } from '@/lib/schemas/checkout'
 import { checkoutFormSchema } from '@/lib/schemas/checkout'
@@ -149,4 +151,50 @@ export async function removePromoCode(): Promise<ActionResult<{ removed: true }>
 	await db.update(carts).set({ promoId: null, updatedAt: new Date() }).where(eq(carts.id, cart.id))
 	revalidatePath('/')
 	return { data: { removed: true }, error: null }
+}
+
+/**
+ * Повтор заказа (2026-11-16): позиции снапшота → текущая корзина (qty суммируются
+ * с капом MAX_QTY). Доступ как у квитанции — владелец или uuid-ссылка (гостю тоже
+ * можно: повтор уедет в гостевую корзину). Удалённые товары (productId = null через
+ * onDelete: set null) пропускаются — added считает только добавленные позиции.
+ */
+export async function repeatOrder(orderId: string): Promise<ActionResult<{ added: number }>> {
+	// кривой uuid роняет запрос в Postgres — отсекаем до БД (§5.24)
+	if (!isUuid(orderId)) return { data: null, error: 'Заказ не найден' }
+
+	const [order] = await db.select({ id: orders.id }).from(orders).where(eq(orders.id, orderId))
+	if (!order) return { data: null, error: 'Заказ не найден' }
+
+	const items = await db
+		.select({ productId: orderItems.productId, qty: orderItems.qty })
+		.from(orderItems)
+		.where(eq(orderItems.orderId, orderId))
+
+	const cart = await getOrCreateCart()
+
+	let added = 0
+	await db.transaction(async (tx) => {
+		for (const item of items) {
+			if (!item.productId) continue // товар удалён из каталога — повторить позицию нельзя
+			const [existing] = await tx
+				.select()
+				.from(cartItems)
+				.where(and(eq(cartItems.cartId, cart.id), eq(cartItems.productId, item.productId)))
+			if (existing) {
+				await tx
+					.update(cartItems)
+					.set({ qty: Math.min(MAX_QTY, existing.qty + item.qty) })
+					.where(eq(cartItems.id, existing.id))
+			} else {
+				await tx
+					.insert(cartItems)
+					.values({ cartId: cart.id, productId: item.productId, qty: item.qty })
+			}
+			added += 1
+		}
+	})
+
+	revalidatePath('/')
+	return { data: { added }, error: null }
 }
