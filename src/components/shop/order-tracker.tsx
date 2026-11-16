@@ -1,22 +1,11 @@
 'use client'
 
-import { cn } from 'cn'
-import type { LucideIcon } from 'lucide-react'
-import {
-	BellRing,
-	Bike,
-	ChefHat,
-	CircleX,
-	ClipboardList,
-	House,
-	Loader2,
-	PackageCheck,
-	Store,
-} from 'lucide-react'
+import { CircleX, Loader2 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
 import { toast } from 'sonner'
+import { StatusBadge } from '@/components/shop/status-badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
 	Dialog,
 	DialogContent,
@@ -27,39 +16,17 @@ import {
 } from '@/components/ui/dialog'
 import { cancelOrder } from '@/lib/actions/orders'
 import { formatDateTime, STATUS_LABELS } from '@/lib/format'
-import {
-	buildTimeline,
-	CANCELLABLE_STATUSES,
-	isOrderStatus,
-	isTerminalStatus,
-	type TimelineStep,
-} from '@/lib/order-timeline'
+import { CANCELLABLE_STATUSES, isOrderStatus, isTerminalStatus } from '@/lib/order-timeline'
 
 const POLL_INTERVAL_MS = 25_000
-
-/**
- * Иконка шага — статус читается текстом и иконкой, не только цветом (a11y §7).
- * status — text-колонка: неизвестное значение не роняет компонент (ревью S7).
- */
-const STEP_ICONS: Record<string, LucideIcon> = {
-	created: ClipboardList,
-	preparing: ChefHat,
-	ready: BellRing,
-	in_delivery: Bike,
-	delivered: House,
-	picked_up: PackageCheck,
-	cancelled_by_customer: CircleX,
-	cancelled_by_vendor: Store,
-}
 
 /** Контракт GET /api/orders/[id] (тикет 03): даты — ISO-строки */
 type OrderStatusDto = { status: string; paymentStatus: string; updatedAt: string }
 
 type OrderTrackerProps = {
 	orderId: string
-	/** text-колонки — приходят строками, валидация в buildTimeline/isOrderStatus */
+	/** text-колонка — приходит строкой, валидация в isOrderStatus (ревью S7) */
 	initialStatus: string
-	fulfillment: string
 	updatedAt: string
 }
 
@@ -67,13 +34,9 @@ type OrderTrackerProps = {
  * Трекинг (этап 4, гриллинг Q1/Q6): начальный статус из RSC, дальше — поллинг
  * 25 с с ETag (304 → пустое тело, экономия; 200 → setState). Ошибки сети и 404
  * молча ждут следующего тика, терминальный статус замолкает навсегда.
+ * 4-бис (2026-11-16): цепочка шагов заменена цветным бейджем статуса.
  */
-export function OrderTracker({
-	orderId,
-	initialStatus,
-	fulfillment,
-	updatedAt,
-}: OrderTrackerProps) {
+export function OrderTracker({ orderId, initialStatus, updatedAt }: OrderTrackerProps) {
 	const [status, setStatus] = useState(initialStatus)
 	const [statusUpdatedAt, setStatusUpdatedAt] = useState(updatedAt)
 	const [dialogOpen, setDialogOpen] = useState(false)
@@ -123,15 +86,16 @@ export function OrderTracker({
 		})
 	}
 
-	const timeline = buildTimeline(status, fulfillment)
 	const statusLabel = isOrderStatus(status) ? STATUS_LABELS[status] : status
 	const canCancel = isOrderStatus(status) && CANCELLABLE_STATUSES.includes(status)
-	const isCancelled = status === 'cancelled_by_customer' || status === 'cancelled_by_vendor'
 
 	return (
 		<Card>
 			<CardHeader>
 				<CardTitle>Статус заказа</CardTitle>
+				<CardAction>
+					<StatusBadge status={status} className='h-6 px-2.5 text-sm' />
+				</CardAction>
 			</CardHeader>
 			<CardContent className='space-y-4'>
 				{/* смена статуса объявляется скринридеру без перезагрузки (a11y §7) */}
@@ -139,21 +103,10 @@ export function OrderTracker({
 					Текущий статус: {statusLabel}
 				</p>
 
-				{/* отмена — баннер ВМЕСТО таймлайна (гриллинг Q2) */}
+				{/* отмена — баннер (гриллинг Q2) */}
 				{status === 'cancelled_by_customer' && <CancelledBanner text='Вы отменили этот заказ' />}
 				{status === 'cancelled_by_vendor' && (
 					<CancelledBanner text='Заказ отклонён заведением — не принят' />
-				)}
-
-				{!isCancelled && timeline.length > 0 && (
-					<ol className='space-y-1'>
-						{timeline.map((step) => (
-							<TimelineRow key={step.key} step={step} />
-						))}
-					</ol>
-				)}
-				{!isCancelled && timeline.length === 0 && (
-					<p className='text-sm text-muted-foreground'>Статус: {status}</p>
 				)}
 
 				<p className='text-xs text-muted-foreground'>
@@ -187,36 +140,6 @@ export function OrderTracker({
 				</DialogContent>
 			</Dialog>
 		</Card>
-	)
-}
-
-function TimelineRow({ step }: { step: TimelineStep }) {
-	const Icon = STEP_ICONS[step.key] ?? CircleX
-	return (
-		<li className='flex items-center gap-3 py-1.5'>
-			<span
-				aria-hidden
-				className={cn(
-					'flex size-8 shrink-0 items-center justify-center rounded-full ring-1',
-					step.state === 'done' && 'bg-primary text-primary-foreground ring-primary',
-					step.state === 'current' &&
-						'bg-primary/10 text-primary ring-primary motion-safe:animate-pulse',
-					step.state === 'pending' && 'text-muted-foreground ring-foreground/15',
-				)}
-			>
-				<Icon className='size-4' />
-			</span>
-			<span
-				className={cn(
-					'text-sm',
-					step.state === 'done' && 'text-foreground',
-					step.state === 'current' && 'font-semibold text-foreground',
-					step.state === 'pending' && 'text-muted-foreground',
-				)}
-			>
-				{step.label}
-			</span>
-		</li>
 	)
 }
 

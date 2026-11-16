@@ -1,9 +1,8 @@
 import { cn } from 'cn'
 import Link from 'next/link'
-import { Badge } from '@/components/ui/badge'
+import { StatusBadge } from '@/components/shop/status-badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import type { OrderStatus } from '@/db/schema'
-import { formatPrice, STATUS_LABELS } from '@/lib/format'
+import { formatPrice } from '@/lib/format'
 import { ACTIVE_STATUSES, isOrderStatus } from '@/lib/order-timeline'
 import { getSession } from '@/lib/session'
 import type { UserOrder } from '@/queries/orders'
@@ -63,10 +62,8 @@ function ActiveOrderCard({ entry }: { entry: UserOrder }) {
 				<CardHeader>
 					<CardTitle className='flex flex-wrap items-center gap-2'>
 						Заказ № {order.id.slice(0, 8)}
-						{/* фильтр выше пропускает только ACTIVE_STATUSES — text-колонка не маскируется (ревью S7) */}
-						<Badge variant='secondary'>
-							{STATUS_LABELS[order.status as OrderStatus] ?? order.status}
-						</Badge>
+						{/* фильтр выше пропускает только ACTIVE_STATUSES */}
+						<StatusBadge status={order.status} />
 					</CardTitle>
 				</CardHeader>
 				<CardContent className='text-sm text-muted-foreground'>

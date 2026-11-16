@@ -3,12 +3,12 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { Suspense } from 'react'
-import { Badge } from '@/components/ui/badge'
+import { StatusBadge } from '@/components/shop/status-badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { OrderStatus } from '@/db/schema'
-import { formatDate, formatPrice, STATUS_LABELS } from '@/lib/format'
+import { formatDate, formatPrice } from '@/lib/format'
 import { ACTIVE_STATUSES } from '@/lib/order-timeline'
 import { getSession } from '@/lib/session'
 import type { UserOrder } from '@/queries/orders'
@@ -121,10 +121,8 @@ function OrderCard({ entry, current = false }: { entry: UserOrder; current?: boo
 				<CardHeader>
 					<CardTitle className='flex flex-wrap items-center gap-2'>
 						Заказ № {order.id.slice(0, 8)}
-						<Badge variant='secondary'>
-							{/* status — text-колонка: невалидное значение не маскируем кастомом (ревью S7) */}
-							{STATUS_LABELS[order.status as OrderStatus] ?? order.status}
-						</Badge>
+						{/* status — text-колонка: невалидное значение не маскируем кастомом (ревью S7) */}
+						<StatusBadge status={order.status} />
 					</CardTitle>
 				</CardHeader>
 				<CardContent className='text-sm text-muted-foreground'>
