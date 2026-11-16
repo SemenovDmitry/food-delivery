@@ -1,9 +1,17 @@
 'use client'
 
-import { ShoppingBag } from 'lucide-react'
+import { ShoppingBag, UserRound } from 'lucide-react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { Button } from '@/components/ui/button'
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { authClient } from '@/lib/auth-client'
 
@@ -19,6 +27,13 @@ type HeaderProps = {
  */
 export function Header({ cartSlot }: HeaderProps) {
 	const { data: session, isPending } = authClient.useSession()
+	const router = useRouter()
+
+	async function handleSignOut() {
+		await authClient.signOut()
+		router.push('/')
+		router.refresh()
+	}
 
 	return (
 		<header className='sticky top-0 z-40 border-b bg-background/80 backdrop-blur'>
@@ -67,13 +82,29 @@ export function Header({ cartSlot }: HeaderProps) {
 					{isPending ? (
 						<div className='h-9 w-20 animate-pulse rounded-md bg-muted' aria-hidden />
 					) : session ? (
-						<div className='flex items-center gap-2'>
-							<span className='text-sm text-muted-foreground'>{session.user.name}</span>
-							<Button variant='outline' size='sm' onClick={() => authClient.signOut()}>
-								Выйти
-							</Button>
-						</div>
+						// меню профиля без имени/телефона (этап 3, Q3): пункты + выход
+						<DropdownMenu>
+							<DropdownMenuTrigger asChild>
+								<Button variant='ghost' size='icon' aria-label='Профиль'>
+									<UserRound aria-hidden className='size-5' />
+								</Button>
+							</DropdownMenuTrigger>
+							<DropdownMenuContent align='end'>
+								<DropdownMenuItem asChild>
+									<Link href='/orders'>Мои заказы</Link>
+								</DropdownMenuItem>
+								{!session.user.emailVerified && (
+									<DropdownMenuItem asChild>
+										<Link href='/email'>Привязать email</Link>
+									</DropdownMenuItem>
+								)}
+								<DropdownMenuSeparator />
+								<DropdownMenuItem onSelect={() => void handleSignOut()}>Выйти</DropdownMenuItem>
+							</DropdownMenuContent>
+						</DropdownMenu>
 					) : (
+						// без usePathname: это URL-данные, ломает пререндер кешируемого shell
+						// (семья §5.3 — searchParams/usePathname в shell не читать)
 						<Button variant='outline' size='sm' asChild>
 							<Link href='/login'>Войти</Link>
 						</Button>

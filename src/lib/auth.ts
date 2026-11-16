@@ -5,6 +5,7 @@ import { db } from '@/db'
 import * as schema from '@/db/schema'
 import { notifications } from '@/db/schema'
 import { sendEmail } from '@/lib/email'
+import { tempEmailFor } from '@/lib/temp-email'
 
 /**
  * Демо-SMS: код всегда `DEMO_SMS_OTP_CODE` (по умолчанию 1111, §5.15).
@@ -38,8 +39,9 @@ export const auth = betterAuth({
 			},
 			verifyOTP: async ({ code }) => code === DEMO_SMS_CODE,
 			signUpOnVerification: {
-				// временный email для better-auth; настоящий email собирает UI этапа 3
-				getTempEmail: (phoneNumber) => `phone-${phoneNumber.replace(/\D/g, '')}@temp.food.local`,
+				// временный email для better-auth; настоящий email привязывает поток
+				// /email (этап 3, Q1/Q5) — формат в lib/temp-email.ts
+				getTempEmail: (phoneNumber) => tempEmailFor(phoneNumber),
 				getTempName: (phoneNumber) => phoneNumber,
 			},
 		}),
