@@ -227,6 +227,21 @@ export const orderItems = pgTable('order_items', {
 	qty: integer('qty').notNull(),
 })
 
+/**
+ * История смен статусов (этап 4, гриллинг Q13/Q15a): строка пишется КАЖДОЙ
+ * сменой статуса в той же транзакции — писатели: createOrder ('created'),
+ * cancelOrder (этап 4), updateOrderStatus (этап 5), автоджоба (этап 10).
+ * UI этапа 4 таблицу не читает — времена шагов таймлайна появятся в этапе 10.
+ */
+export const orderStatusEvents = pgTable('order_status_events', {
+	id: uuid('id').primaryKey().defaultRandom(),
+	orderId: uuid('order_id')
+		.notNull()
+		.references(() => orders.id, { onDelete: 'cascade' }),
+	status: text('status').notNull(),
+	createdAt: timestamp('created_at').notNull().defaultNow(),
+})
+
 // ─── Настройки (key/value) — этап 1: доставка; форма в админке — этап 5 ─────
 
 export const settings = pgTable('settings', {
@@ -286,6 +301,7 @@ export type Cart = typeof carts.$inferSelect
 export type CartItem = typeof cartItems.$inferSelect
 export type Order = typeof orders.$inferSelect
 export type OrderItem = typeof orderItems.$inferSelect
+export type OrderStatusEvent = typeof orderStatusEvents.$inferSelect
 export type Setting = typeof settings.$inferSelect
 export type Payment = typeof payments.$inferSelect
 export type Notification = typeof notifications.$inferSelect

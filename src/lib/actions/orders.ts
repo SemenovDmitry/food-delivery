@@ -1,13 +1,14 @@
 'use server'
 
-import { and, eq } from 'drizzle-orm'
+import { and, eq, inArray } from 'drizzle-orm'
 import { revalidatePath, updateTag } from 'next/cache'
 import { db } from '@/db'
-import { cartItems, carts, orderItems, orders, promotions } from '@/db/schema'
+import { cartItems, carts, orderItems, orderStatusEvents, orders, promotions } from '@/db/schema'
 import { getCartLines, getOrCreateCart } from '@/lib/cart'
 import { MAX_QTY } from '@/lib/constants'
 import { deliveryFeeFor } from '@/lib/delivery'
 import { isUuid } from '@/lib/id'
+import { CANCELLABLE_STATUSES } from '@/lib/order-timeline'
 import { calcDiscount, isPromoInWindow, toCalcLines } from '@/lib/promo'
 import type { CheckoutFormValues } from '@/lib/schemas/checkout'
 import { checkoutFormSchema } from '@/lib/schemas/checkout'
@@ -101,6 +102,10 @@ export async function createOrder(
 				qty: line.qty,
 			})),
 		)
+
+		// история статусов (этап 4, Q15a): первая строка — момент создания;
+		// писатели последующих смен — cancelOrder / этап 5 / этап 10
+		await tx.insert(orderStatusEvents).values({ orderId: order.id, status: 'created' })
 
 		// корзина очищена после оформления
 		await tx.delete(cartItems).where(eq(cartItems.cartId, cart.id))
@@ -197,4 +202,49 @@ export async function repeatOrder(orderId: string): Promise<ActionResult<{ added
 
 	revalidatePath('/')
 	return { data: { added }, error: null }
+}
+
+/**
+ * Отмена клиентом (этап 4, гриллинг Q12): только created|preparing и только
+ * неоплаченный (оплаченные = refund — вне скоупа, этап 9). Доступ — как у
+ * страницы: владелец или держатель uuid-ссылки, отдельной проверки сессии нет.
+ * Повторная проверка статуса в транзакции: гонка «нажал в последний момент,
+ * а заказ уже готовится» возвращает ошибку, а не отменяет после ready.
+ */
+export async function cancelOrder(orderId: string): Promise<ActionResult<{ cancelled: true }>> {
+	// кривой uuid роняет запрос в Postgres — отсекаем до БД (§5.24)
+	if (!isUuid(orderId)) return { data: null, error: 'Заказ не найден' }
+
+	const [order] = await db
+		.select({ status: orders.status, paymentStatus: orders.paymentStatus })
+		.from(orders)
+		.where(eq(orders.id, orderId))
+	if (!order) return { data: null, error: 'Заказ не найден' }
+	if (order.paymentStatus !== 'pending') {
+		// задел этапа 9: оплаченные не отменяем без refund-механики
+		return { data: null, error: 'Оплаченный заказ отменить нельзя' }
+	}
+
+	const cancelled = await db.transaction(async (tx) => {
+		const updated = await tx
+			.update(orders)
+			.set({ status: 'cancelled_by_customer', updatedAt: new Date() })
+			.where(
+				and(
+					eq(orders.id, orderId),
+					inArray(orders.status, [...CANCELLABLE_STATUSES]),
+					eq(orders.paymentStatus, 'pending'),
+				),
+			)
+			.returning({ id: orders.id })
+
+		if (updated.length === 0) return false // гонка: статус ушёл вперёд между select и update
+		await tx.insert(orderStatusEvents).values({ orderId, status: 'cancelled_by_customer' })
+		return true
+	})
+
+	if (!cancelled) return { data: null, error: 'Заказ уже в работе — отменить нельзя' }
+
+	revalidatePath('/orders')
+	return { data: { cancelled: true }, error: null }
 }

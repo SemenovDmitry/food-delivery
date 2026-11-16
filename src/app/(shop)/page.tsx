@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { connection } from 'next/server'
 import { Suspense } from 'react'
+import { ActiveOrdersSection } from '@/components/shop/active-orders-card'
 import { MenuNav } from '@/components/shop/menu-nav'
 import { ProductCard } from '@/components/shop/product-card'
 import { PromoCard } from '@/components/shop/promo-card'
@@ -9,12 +10,18 @@ import { getFullMenu, type MenuCategory } from '@/queries/menu'
 import { getActivePromotions } from '@/queries/promotions'
 
 /**
- * Главная = меню (§6/§8): «Акции недели» в Suspense, sticky-навигация с scrollspy,
- * поиск `?q` через searchParams в Suspense. Кешируемая оболочка + динамические скоупы.
+ * Главная = меню (§6/§8): «Активные заказы» (этап 4) и «Акции недели» в Suspense,
+ * sticky-навигация с scrollspy, поиск `?q` через searchParams в Suspense.
+ * Кешируемая оболочка + динамические скоупы.
  */
 export default async function HomePage({ searchParams }: PageProps<'/'>) {
 	return (
 		<main id='main-content'>
+			{/* fallback=null: у гостя слот пуст — скелетон мигнул бы и исчез (Q10) */}
+			<Suspense fallback={null}>
+				<ActiveOrdersSection />
+			</Suspense>
+
 			<section aria-labelledby='promos-heading' className='mx-auto max-w-6xl px-4 pt-6'>
 				<div className='flex items-baseline justify-between'>
 					<h2 id='promos-heading' className='text-2xl font-bold'>

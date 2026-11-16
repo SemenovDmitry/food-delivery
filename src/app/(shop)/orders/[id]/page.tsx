@@ -3,22 +3,22 @@ import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 import { CopyLinkButton } from '@/components/shop/copy-link-button'
 import { OrderTotals } from '@/components/shop/order-totals'
+import { OrderTracker } from '@/components/shop/order-tracker'
 import { RepeatOrderButton } from '@/components/shop/repeat-order-button'
-import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
-import type { OrderStatus } from '@/db/schema'
-import { formatPrice, STATUS_LABELS } from '@/lib/format'
+import { formatPrice } from '@/lib/format'
 import { isUuid } from '@/lib/id'
+import { getSession } from '@/lib/session'
 import { getOrderById } from '@/queries/orders'
 
 type ReceiptPageProps = PageProps<'/orders/[id]'>
 
 /**
- * Квитанция заказа (тикет 06) — НЕ трекинг: этап 4 надстроит таймлайн
- * поверх этой страницы. Доступ по неугадываемому uuid (§8), поэтому без
- * сессии страница валидна — гард «владелец или uuid» этапа 4 не изменит.
+ * Квитанция + трекинг (этап 4): таймлайн с поллингом 25 с над снапшотом состава.
+ * Доступ по неугадываемому uuid (§8): uuid открывает статус и состав, сессия —
+ * чувствительное (гриллинг Q11a): адрес/комментарий видит только владелец.
  */
 export default function OrderReceiptPage({ params }: ReceiptPageProps) {
 	return (
@@ -42,67 +42,84 @@ async function ReceiptContent({ params }: { params: Promise<{ id: string }> }) {
 	const subtotal = items.reduce((sum, item) => sum + item.price * item.qty, 0)
 	const isPickup = order.fulfillment !== 'delivery'
 
+	// getSession за connection()-гейтом (§5.3) — гость получает null без сессии
+	const session = await getSession()
+	const isOwner = session?.user.id === order.userId
+
 	return (
 		<div className='pt-6'>
-			<div className='flex justify-end pb-3'>
+			<div className='flex flex-wrap items-center justify-between gap-2 pb-3'>
+				<h1 className='text-2xl font-bold'>Заказ № {order.id.slice(0, 8)}</h1>
 				<RepeatOrderButton orderId={order.id} />
 			</div>
-			<Card>
-				<CardHeader>
-					<CardTitle className='flex flex-wrap items-center gap-2'>
-						Заказ № {order.id.slice(0, 8)}
-						<Badge variant='secondary'>
-							{/* status — text-колонка: невалидное значение не маскируем кастомом (ревью S7) */}
-							{STATUS_LABELS[order.status as OrderStatus] ?? order.status}
-						</Badge>
-					</CardTitle>
-				</CardHeader>
-				<CardContent className='space-y-4'>
-					<ul className='space-y-2 text-sm'>
-						{items.map((item) => (
-							<li key={item.id} className='flex justify-between gap-3'>
-								<span>
-									{item.name} <span className='text-muted-foreground'>×{item.qty}</span>
-								</span>
-								<span className='tabular-nums'>{formatPrice(item.price * item.qty)}</span>
-							</li>
-						))}
-					</ul>
 
-					<Separator />
+			<div className='space-y-4'>
+				<OrderTracker
+					orderId={order.id}
+					initialStatus={order.status}
+					fulfillment={order.fulfillment}
+					updatedAt={order.updatedAt.toISOString()}
+				/>
 
-					<OrderTotals
-						subtotal={subtotal}
-						discountAmount={order.discountAmount}
-						discountLabel={promo && order.discountAmount > 0 ? promo.name : null}
-						deliveryCost={order.deliveryFee}
-						isPickup={isPickup}
-					/>
+				<Card>
+					<CardHeader>
+						<CardTitle>Состав заказа</CardTitle>
+					</CardHeader>
+					<CardContent className='space-y-4'>
+						<ul className='space-y-2 text-sm'>
+							{items.map((item) => (
+								<li key={item.id} className='flex justify-between gap-3'>
+									<span>
+										{item.name} <span className='text-muted-foreground'>×{item.qty}</span>
+									</span>
+									<span className='tabular-nums'>{formatPrice(item.price * item.qty)}</span>
+								</li>
+							))}
+						</ul>
 
-					<Separator />
+						<Separator />
 
-					<p className='text-sm'>
-						{isPickup ? 'Способ получения: самовывоз' : `Доставка: ${order.address}`}
-					</p>
-					{order.comment && (
-						<p className='text-sm text-muted-foreground'>Комментарий: {order.comment}</p>
-					)}
+						<OrderTotals
+							subtotal={subtotal}
+							discountAmount={order.discountAmount}
+							discountLabel={promo && order.discountAmount > 0 ? promo.name : null}
+							deliveryCost={order.deliveryFee}
+							isPickup={isPickup}
+						/>
 
-					<Separator />
+						<Separator />
 
-					<div className='rounded-lg border p-3'>
-						<p className='text-sm font-medium'>Ссылка для отслеживания</p>
-						<p className='mt-1 text-sm text-muted-foreground'>
-							Ссылка уникальна — по ней виден статус заказа. Сохраните её.
-						</p>
-						<CopyLinkButton className='mt-2' />
-					</div>
+						{isOwner ? (
+							<>
+								<p className='text-sm'>
+									{isPickup ? 'Способ получения: самовывоз' : `Доставка: ${order.address}`}
+								</p>
+								{order.comment && (
+									<p className='text-sm text-muted-foreground'>Комментарий: {order.comment}</p>
+								)}
+							</>
+						) : (
+							<p className='text-sm text-muted-foreground'>
+								Адрес и комментарий скрыты — видны только владельцу заказа в его аккаунте
+							</p>
+						)}
 
-					<Link href='/' className='block text-center text-sm text-primary hover:underline'>
-						Вернуться в меню
-					</Link>
-				</CardContent>
-			</Card>
+						<Separator />
+
+						<div className='rounded-lg border p-3'>
+							<p className='text-sm font-medium'>Ссылка для отслеживания</p>
+							<p className='mt-1 text-sm text-muted-foreground'>
+								Ссылка уникальна — по ней виден статус заказа. Сохраните её.
+							</p>
+							<CopyLinkButton className='mt-2' />
+						</div>
+
+						<Link href='/' className='block text-center text-sm text-primary hover:underline'>
+							Вернуться в меню
+						</Link>
+					</CardContent>
+				</Card>
+			</div>
 		</div>
 	)
 }

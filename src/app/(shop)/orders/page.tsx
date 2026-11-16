@@ -9,14 +9,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { OrderStatus } from '@/db/schema'
 import { formatDate, formatPrice, STATUS_LABELS } from '@/lib/format'
+import { ACTIVE_STATUSES } from '@/lib/order-timeline'
 import { getSession } from '@/lib/session'
 import type { UserOrder } from '@/queries/orders'
 import { getUserOrders } from '@/queries/orders'
 
 export const metadata: Metadata = { title: 'Мои заказы' }
-
-/** Нетерминальные статусы — «текущий заказ» (схема: 8 статусов, §2) */
-const ACTIVE_STATUSES: readonly OrderStatus[] = ['created', 'preparing', 'ready', 'in_delivery']
 
 export default function OrdersPage() {
 	return (
