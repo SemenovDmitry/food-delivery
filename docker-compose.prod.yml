@@ -17,6 +17,9 @@ services:
       BETTER_AUTH_URL: http://localhost:3000 # доверенный origin (prod strict: без него «Invalid origin» на auth-POST, найдено на приёмке этапа 5)
       INTERNAL_API_SECRET: ${INTERNAL_API_SECRET:?INTERNAL_API_SECRET обязателен (общий с ws-gateway)}
       PAYMENT_PROVIDER: mock
+      # этап 9: HMAC-секрет webhook'а и окно оплаты (приёмка 08); dev-заглушка — заменить перед реальным деплоем
+      PAYMENTS_WEBHOOK_SECRET: ${PAYMENTS_WEBHOOK_SECRET:?PAYMENTS_WEBHOOK_SECRET обязателен (openssl rand -base64 32)}
+      PAYMENT_WINDOW_MINUTES: ${PAYMENT_WINDOW_MINUTES:-5}
     ports:
       - "3000:3000"
     depends_on:
