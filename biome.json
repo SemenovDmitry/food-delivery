@@ -14,7 +14,8 @@
 			"!skills-lock.json",
 			"!public",
 			"!**/.zcode",
-			"!**/.agents"
+			"!**/.agents",
+			"!**/.scratch/**/lighthouse"
 		]
 	},
 	"css": {

@@ -50,7 +50,7 @@ httpServer.on('upgrade', async (request, socket, head) => {
 	}
 	wss.handleUpgrade(request, socket, head, (ws) => {
 		console.log(
-			`[ws-gateway] upgrade ok: ${identity.kind}${identity.kind === 'guest' ? '' : ' ' + identity.userId}`,
+			`[ws-gateway] upgrade ok: ${identity.kind}${identity.kind === 'guest' ? '' : ` ${identity.userId}`}`,
 		)
 		const connection: GatewayConnection = {
 			ws,
