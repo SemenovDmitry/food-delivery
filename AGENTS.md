@@ -185,13 +185,17 @@ Next.js 16.4.6 (App Router, Turbopack, Cache Components, Partial Prefetching, Re
 
 - [ ] Коммит на каждый этап, push в `origin/master`
 
-### Этап 9 — Оплата (мок-провайдер с webhook-контрактом)
+### Этап 9 — Оплата (мок-провайдер с webhook-контрактом) — переопределён гриллингом Q1–Q21, 2026-11-17 (спека+тикеты — `.scratch/stage-9/`)
 
-- [ ] `lib/payments/`: интерфейс `PaymentProvider` (`initiate`/`verifyWebhook`), реализация `MockProvider`, выбор по env `PAYMENT_PROVIDER`
-- [ ] Таблица `payments` (создана на этапе 0): записи created|processing|paid|failed|cancelled, amount в копейках, provider, external_id, timestamps
-- [ ] Мок-страница — «сайт провайдера» `(shop)/orders/[id]/pay/page.tsx` (доступ — владелец по сессии или uuid): логотип-заглушка, форма «карта», кнопка «Оплатить» → `POST /api/payments/mock/webhook` (HMAC `PAYMENTS_WEBHOOK_SECRET`) → `payments: paid` → `orders.paymentStatus: paid` → `revalidateTag('orders')` → редирект на трекинг (как return_url)
-- [ ] Чекаут: выбор «карта (мок-провайдер) / при получении»; «при получении» — заказ сразу подтверждён; замена на реального провайдера = новый файл + env, без правки UI и схемы
-- **Готово, когда**: «заказ с картой → мок-провайдер → webhook → на трекинге „оплацен“»; при получении — заказ сразу подтверждён
+- [ ] Миграция drizzle-kit: `orders.paymentMethod` (`online | on_receipt`, default `on_receipt`), `payments` **unique(order_id)** — одна строка на заказ (Q2), таблица `payment_methods` (провайдеры-банки: `sber`/`unionpay`, isActive, position); `ORDER_STATUSES` += **`cancelled_by_timeout`** — новый терминальный статус, пишет только система (без миграции статуса: text + TS-константа): TERMINAL/STATUS_LABELS («Отменён: не оплачен»)/StatusBadge destructive/чипы админки; сидер — Сбер+UnionPay активны; `.env.example` += `PAYMENT_WINDOW_MINUTES=5`
+- [ ] Шов `lib/payments/`: `PaymentProvider { initiate, verifyWebhook }`, фабрика по env `PAYMENT_PROVIDER` (fail-fast **внутри** вызова — урок этапа 6), `MockProvider`, HMAC-хелпер (sha256 по сырому телу, `timingSafeEqual`), общее ядро `applyPaymentEvent` — идемпотентные переходы (`pending→paid` conditional UPDATE), 409-исход на отменённый заказ, TTL-гард → `cancelled_by_timeout` + событие
+- [ ] Роуты: `POST /api/payments/mock/webhook` — сырой `request.text()`, коды 200 applied/повтор · 400 HMAC · 404 payment · 409 конфликт/просрочка, `revalidateTag('orders','max')`, auth = только HMAC; `POST /api/payments/mock/confirm` — «бэкенд провайдера»: доступ владелец/uuid (паттерн cancelOrder), пишет provider=банк/processing/новый externalId, **подписывает серверно и loopback-POST'ит webhook** (origin из request.url, без env; секрет не в браузере — Q1-Б)
+- [ ] Чекаут: radio «Онлайн-оплата / При получении» (дефолт — при получении; онлайн виден при ≥1 активном провайдере, Q20); **ревалидация способа в `createOrder`** (паттерн промокода); online → initiate (упал → заказ остаётся, оплата позже через CTA, Q8) + payment-строка (amount = subtotal − скидка + доставка) + redirect на pay; on_receipt → прежний поток без payment-строки; поле в checkoutFormSchema без transform'ов (§5.31 не применяется)
+- [ ] Платёжная страница **`(provider)/orders/[id]/pay`** — route group без шапки магазина (Q10): шаг 1 «Выберите банк» + отсчёт 5:00 от `orders.createdAt`; шаг 2 заглушка банка («Оплатить» / **«Отмена» → webhook `failed` → назад к выбору, повтор до конца окна — Q19**); грани: paid/отменён/on_receipt → redirect, failed → повтор той же строки, не-uuid → 404
+- [ ] Трекинг: платёжный чип всегда («Ожидает оплаты»+CTA → pay / «Оплачено» / «При получении»; виден держателю uuid — Q11a-семантика), баннер «Время оплаты истекло» для `cancelled_by_timeout`; чип доезжает существующим поллингом 25 c
+- [ ] Гварды: кухня не стартует неоплаченный онлайн (`updateOrderStatus` гвард «Заказ ожидает оплаты» + select disabled в UI; админ живой отказ неоплаченного — `cancelled_by_vendor`); **on_receipt при delivered|picked_up → paymentStatus=paid в той же транзакции** (Q21); просрочка окна → `cancelled_by_timeout` ленивыми гардами (свип — в автоджобу этапа 10)
+- [ ] `/admin/payments` — отдельная страница: тумблеры провайдеров (Switch, useOptimistic, тост-откат; предупреждение при выключении последнего — онлайн мягко исчезает из чекаута); AdminNav += «Оплата»
+- **Готово, когда**: «онлайн-заказ → выбор банка → заглушка → loopback-webhook (HMAC) → „Оплачено“ ≤25 c»; «Отмена» → failed → повтор; просрочка → `cancelled_by_timeout`; неоплаченный не стартует кухней; on_receipt оплачен при получении; curl-негативы (400/404/409, идемпотентный replay); prod-приёмка + возврат dev
 
 ### Этап 10 — Уведомления (аутбокс) + автоджоба статусов
 

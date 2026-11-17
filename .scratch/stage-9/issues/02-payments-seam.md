@@ -1,0 +1,13 @@
+# 02: Шов lib/payments — типы, фабрика, MockProvider, HMAC, ядро applyPaymentEvent
+
+**What to build:** `lib/payments/types.ts` — `PaymentProvider { initiate(input: { orderId, amount }): Promise<{ externalId, redirectUrl }>; verifyWebhook(headers: Headers, rawBody: string): Promise<WebhookEvent | null> }`; `WebhookEvent = { paymentId, status: 'paid' | 'failed' }`. `lib/payments/hmac.ts` — `signHmac(rawBody, secret)` (HMAC-SHA256, hex) + `verifyHmac` через `crypto.timingSafeEqual` (сравнение постоянного времени). `lib/payments/mock.ts` — `MockProvider`: `initiate` генерирует `externalId = mock_<crypto.randomUUID()>` и `redirectUrl = /orders/<orderId>/pay` (БД не трогает — строку payments вставляет вызывающий action); `verifyWebhook` — сверяет подпись заголовка `x-payment-signature` с подписью rawBody, парсит JSON в `WebhookEvent`, любой прокол → `null`. `lib/payments/index.ts` — `getPaymentProvider()`: читает env `PAYMENT_PROVIDER` (default `mock`), неизвестное значение → `throw` **внутри вызова** (module-level throw валит `next build` — урок этапа 6 / §5.22-семья). `lib/payments/webhook-core.ts` — чистое ядро `applyPaymentEvent(event)` без HTTP: в транзакции найти payment по id (не найден → `'missing'`); заказ уже в терминальной отмене → payment `cancelled` + вернуть `'conflict'` (деньги вернуть нечем, но paid на отменённом не появится — Q5); **TTL-гард**: `paymentMethod = 'online' && orders.paymentStatus = 'pending' && createdAt + PAYMENT_WINDOW_MINUTES < now` → payment `cancelled` + заказ `cancelled_by_timeout` + строка в `order_status_events` → вернуть `'expired'` (просрочка не платится, Q17); `paid` → conditional UPDATE `payments processing→paid` + `orders pending→paid` (0 строк = `'duplicate'`, идемпотентный replay) → `'applied'`; `failed` → payment `failed` (заказ не трогается — окно ещё живёт). Отсутствие `PAYMENTS_WEBHOOK_SECRET` → fail-fast в точке использования, не module-level. Возвращаемый тип — discriminated union исходов (`applied | duplicate | missing | conflict | expired`) — роут 03 маппит в коды ответа.
+
+**Blocked by:** —
+
+**Status:** open
+
+- [ ] Типы/фабрика/MockProvider/HMAC по контракту выше; tsc зелёный
+- [ ] `verifyWebhook` отклоняет кривую подпись и кривой JSON (`null`), честную принимает
+- [ ] `applyPaymentEvent`: applied/duplicate/missing/conflict/expired — покрыты юнит-логикой (руками против dev-БД)
+- [ ] TTL-гард считает от `orders.createdAt` + `PAYMENT_WINDOW_MINUTES`, пишет `cancelled_by_timeout` + событие
+- [ ] Fail-fast на пустой `PAYMENTS_WEBHOOK_SECRET` — внутри вызова

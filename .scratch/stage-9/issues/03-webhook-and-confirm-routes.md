@@ -1,0 +1,13 @@
+# 03: Роуты POST /api/payments/mock/webhook + POST /api/payments/mock/confirm (loopback)
+
+**What to build:** `POST /api/payments/mock/webhook` — «приём платежки» (Q1/Q5): тело только через `await request.text()` (сырое — подпись по байтам); `getPaymentProvider().verifyWebhook(request.headers, raw)` → `null` → 400; `applyPaymentEvent(event)` → маппинг исходов: `applied | duplicate | expired??` — `applied`/`duplicate` → 200 (идемпотентный replay обязан быть 200, Q5), `missing` → 404, `conflict`/`expired` → 409; на `applied` — `revalidateTag('orders', 'max')` (форма для Route Handlers, v16 §5.3); `Cache-Control: no-store`; auth — ТОЛЬКО HMAC (провайдер зовёт машинно, без сессий); вызов Route Handler не кешировать (POST сам динамический). `POST /api/payments/mock/confirm` — «бэкенд провайдера», браузерный (Q1-Б): тело `{ orderId, providerCode, action: 'pay' | 'cancel' }`; гарды: не-uuid → 404 (§5.24); доступ как у страницы — владелец по сессии ИЛИ знание uuid (паттерн `cancelOrder`, отдельной проверки сессии нет); заказать payment по orderId: `paymentMethod = 'online'`, payment существует и НЕ `paid`; для `action='pay'`: `providerCode` ∈ активных `payment_methods`, иначе 409 «Онлайн-оплата недоступна»; для `action='cancel'`: статус → `failed`. Запись: `payments.provider = code` (для cancel — не трогаем), `status = 'processing'`, `externalId = mock_<новый uuid>` (повтор = новый externalId, Q7), `updatedAt`. Подпись: payload `{ paymentId, status }` → `signHmac` с `PAYMENTS_WEBHOOK_SECRET` → **loopback** `fetch(`${new URL(request.url).origin}/api/payments/mock/webhook`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-payment-signature': sig }, body: raw })` — origin из запроса, без env; результат webhook транслировать клиенту: успех → `{ redirectUrl: '/orders/<orderId>' }` (JSON с кодом исхода), провал → код/причина (tost на pay-странице). Base URL при self-fetch: тот же процесс Next обрабатывает второй запрос конкурентно — дедлока нет (async I/O).
+
+**Blocked by:** 02
+
+**Status:** open
+
+- [ ] Webhook: 200 applied / 200 duplicate / 400 кривой HMAC / 404 missing / 409 conflict+expired; `revalidateTag('orders','max')` на applied
+- [ ] Webhook читает сырое тело `request.text()`, подпись проверяется по байтам (не по перепарсенному JSON)
+- [ ] Confirm: гарды (uuid, доступ, online, payment не paid, провайдер активен), пишут provider/processing/новый externalId
+- [ ] Confirm подписывает серверно и делает loopback POST; секрет не попадает в клиентский бандл (проверить grep по .next/static)
+- [ ] Успех возвращает `{ redirectUrl }`; провал — код исхода webhook
