@@ -34,6 +34,8 @@ type CheckoutFormProps = {
 	/** prefill из сессии (гость — пустые) */
 	initialName: string
 	initialPhone: string
+	/** ≥1 активного провайдера (этап 9, Q20): false → radio онлайн скрыт */
+	hasActiveProviders: boolean
 }
 
 /**
@@ -42,6 +44,8 @@ type CheckoutFormProps = {
  * checkoutFormSchema (тип = z.infer), сервер парсит той же схемой.
  * Серверные ошибки — Dialog-модалка: промо-ошибка уже сняла промо с корзины,
  * повторное «Оформить» проходит без скидки (гриллинг 2026-11-15, Q12).
+ * Оплата (этап 9, Q16/Q3): radio «Онлайн-оплата / При получении», дефолт —
+ * при получении; онлайн ведёт на страницу провайдера (payUrl из action).
  */
 export function CheckoutForm({
 	lines,
@@ -50,6 +54,7 @@ export function CheckoutForm({
 	initialFulfillment,
 	initialName,
 	initialPhone,
+	hasActiveProviders,
 }: CheckoutFormProps) {
 	const router = useRouter()
 	const [serverError, setServerError] = useState<string | null>(null)
@@ -67,6 +72,7 @@ export function CheckoutForm({
 			customerName: initialName,
 			phone: initialPhone,
 			fulfillment: initialFulfillment,
+			paymentMethod: 'on_receipt', // дефолт — при получении (Q3)
 			address: '',
 			comment: '',
 		},
@@ -81,7 +87,8 @@ export function CheckoutForm({
 		setServerError(null)
 		const result = await createOrder(values)
 		if (result.data !== null) {
-			router.push(`/orders/${result.data.orderId}`)
+			// онлайн → payUrl (страница провайдера), иначе трекинг (return_url-семантика)
+			router.push(result.data.payUrl ?? `/orders/${result.data.orderId}`)
 		} else {
 			// промо-ошибка: createOrder уже снял promoId — корзина под модалкой обновится
 			setServerError(result.error)
@@ -136,6 +143,62 @@ export function CheckoutForm({
 							</Tabs>
 						)}
 					/>
+
+					<fieldset className='space-y-2'>
+						<legend className='text-sm font-medium'>Способ оплаты</legend>
+						{/* radio из активных провайдеров (Q15/Q20): онлайн виден при ≥1 банке;
+						    дефолт — при получении. Нативные radio — клавиатура из коробки (§7) */}
+						{hasActiveProviders && (
+							<div className='flex items-start gap-2.5 rounded-lg border p-3 has-[input:checked]:border-primary'>
+								<input
+									id='checkout-payment-online'
+									type='radio'
+									value='online'
+									className='mt-1 accent-primary'
+									aria-describedby='checkout-payment-online-hint'
+									{...register('paymentMethod')}
+								/>
+								<div className='min-w-0'>
+									<Label
+										htmlFor='checkout-payment-online'
+										className='text-sm font-medium leading-none'
+									>
+										Онлайн-оплата
+									</Label>
+									<p
+										id='checkout-payment-online-hint'
+										className='mt-1 text-sm text-muted-foreground'
+									>
+										СБП или карта — выбор банка после оформления заказа
+									</p>
+								</div>
+							</div>
+						)}
+						<div className='flex items-start gap-2.5 rounded-lg border p-3 has-[input:checked]:border-primary'>
+							<input
+								id='checkout-payment-on-receipt'
+								type='radio'
+								value='on_receipt'
+								className='mt-1 accent-primary'
+								aria-describedby='checkout-payment-on-receipt-hint'
+								{...register('paymentMethod')}
+							/>
+							<div className='min-w-0'>
+								<Label
+									htmlFor='checkout-payment-on-receipt'
+									className='text-sm font-medium leading-none'
+								>
+									При получении
+								</Label>
+								<p
+									id='checkout-payment-on-receipt-hint'
+									className='mt-1 text-sm text-muted-foreground'
+								>
+									Наличными или картой курьеру / кассиру
+								</p>
+							</div>
+						</div>
+					</fieldset>
 
 					<div className='grid gap-4 sm:grid-cols-2'>
 						<div className='flex flex-col gap-1.5'>

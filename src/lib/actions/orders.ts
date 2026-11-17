@@ -4,7 +4,15 @@ import { and, eq, inArray } from 'drizzle-orm'
 import { revalidatePath, updateTag } from 'next/cache'
 import { db } from '@/db'
 import type { OrderStatus } from '@/db/schema'
-import { cartItems, carts, orderItems, orderStatusEvents, orders, promotions } from '@/db/schema'
+import {
+	cartItems,
+	carts,
+	orderItems,
+	orderStatusEvents,
+	orders,
+	payments,
+	promotions,
+} from '@/db/schema'
 import { getCartLines, getOrCreateCart } from '@/lib/cart'
 import { MAX_QTY } from '@/lib/constants'
 import { deliveryFeeFor } from '@/lib/delivery'
@@ -15,14 +23,19 @@ import {
 	isOrderStatus,
 	nextStatuses,
 } from '@/lib/order-timeline'
+import { getPaymentProvider } from '@/lib/payments'
 import { calcDiscount, isPromoInWindow, toCalcLines } from '@/lib/promo'
 import type { CheckoutFormValues } from '@/lib/schemas/checkout'
 import { checkoutFormSchema } from '@/lib/schemas/checkout'
 import { enforceNotBlocked, getSession, requireAdmin } from '@/lib/session'
 import { getDeliverySettings } from '@/lib/settings'
 import type { ActionResult } from '@/lib/types'
+import { hasActivePaymentProvider } from '@/queries/payments'
 
 export type CreateOrderPayload = CheckoutFormValues
+
+/** payUrl доезжает только для онлайн-оплаты: редирект на страницу провайдера (этап 9) */
+export type CreateOrderResult = { orderId: string; payUrl?: string }
 
 /** Снятие промокода с корзины (кто виноват — решает вызывающий) */
 async function clearCartPromo(cartId: string) {
@@ -32,14 +45,16 @@ async function clearCartPromo(cartId: string) {
 
 /**
  * createOrder: состав из корзины в БД (не из клиента), снапшот цен,
- * ревалидация промокода и расчёт доставки на сервере, транзакция,
+ * ревалидация промокода И способа оплаты на сервере, транзакция,
  * revalidateTag('orders') (§5.10 + гриллинг этапа 1).
  * Валидация — та же zod-схема, что и на клиенте (единственный источник правил),
  * но парсим её ЗДЕСЬ: данные из клиента не доверяем (§5.10).
+ * Оплата (этап 9, Q15/Q20): online ревалидируется против payment_methods
+ * (паттерн промокода) — выключенный пока форма была открыта, отсекается здесь.
  */
 export async function createOrder(
 	payload: CreateOrderPayload,
-): Promise<ActionResult<{ orderId: string }>> {
+): Promise<ActionResult<CreateOrderResult>> {
 	await enforceNotBlocked() // бан/архив режут мутации (этап 5, Q14); гость проходит
 	const parsed = checkoutFormSchema.safeParse(payload)
 	if (!parsed.success) {
@@ -48,7 +63,13 @@ export async function createOrder(
 			error: parsed.error.issues[0]?.message ?? 'Проверьте данные заказа',
 		}
 	}
-	const { customerName, phone, fulfillment, address, comment } = parsed.data
+	const { customerName, phone, fulfillment, address, comment, paymentMethod } = parsed.data
+
+	// ревалидация способа оплаты: on_receipt валиден всегда; online — только
+	// при ≥1 активном провайдере (Q20: оба выключены → мягкий отказ до создания заказа)
+	if (paymentMethod === 'online' && !(await hasActivePaymentProvider())) {
+		return { data: null, error: 'Онлайн-оплата временно недоступна' }
+	}
 
 	const cart = await getOrCreateCart()
 	const lines = await getCartLines(cart.id)
@@ -82,6 +103,10 @@ export async function createOrder(
 
 	const session = await getSession()
 
+	// сумма платежа = всё уже посчитано сервером (скидка от корзины, доставка от settings)
+	const paymentAmount = subtotal - discountAmount + deliveryFee
+	let payUrl: string | undefined
+
 	const orderId = await db.transaction(async (tx) => {
 		const [order] = await tx
 			.insert(orders)
@@ -97,8 +122,9 @@ export async function createOrder(
 				deliveryFee,
 				status: 'created',
 				paymentStatus: 'pending',
+				paymentMethod,
 			})
-			.returning()
+			.returning({ id: orders.id })
 
 		await tx.insert(orderItems).values(
 			lines.map((line) => ({
@@ -114,6 +140,12 @@ export async function createOrder(
 		// писатели последующих смен — cancelOrder / этап 5 / этап 10
 		await tx.insert(orderStatusEvents).values({ orderId: order.id, status: 'created' })
 
+		// онлайн-оплата: строка payment рождается вместе с заказом (Q2 — одна
+		// на заказ); externalId допишет initiate после коммита
+		if (paymentMethod === 'online') {
+			await tx.insert(payments).values({ orderId: order.id, amount: paymentAmount })
+		}
+
 		// корзина очищена после оформления
 		await tx.delete(cartItems).where(eq(cartItems.cartId, cart.id))
 		await tx.update(carts).set({ promoId: null }).where(eq(carts.id, cart.id))
@@ -121,10 +153,26 @@ export async function createOrder(
 		return order.id
 	})
 
+	// initiate — вне транзакции (внешний вызов не живёт в транзакциях, §5.10).
+	// Провал не откатывает заказ (Q8): payment-строка есть, externalId допишет
+	// confirm при попытке оплаты, пользователь платит через CTA на трекинге
+	if (paymentMethod === 'online') {
+		try {
+			const initiated = await getPaymentProvider().initiate({ orderId, amount: paymentAmount })
+			await db
+				.update(payments)
+				.set({ externalId: initiated.externalId, updatedAt: new Date() })
+				.where(eq(payments.orderId, orderId))
+			payUrl = initiated.redirectUrl
+		} catch (error) {
+			console.error('createOrder: initiate провайдера упал — оплата позже через CTA', error)
+		}
+	}
+
 	// Server Action + read-your-own-writes → updateTag (revalidateTag(tag) в v16 deprecated)
 	updateTag('orders')
 	revalidatePath('/')
-	return { data: { orderId }, error: null }
+	return { data: payUrl ? { orderId, payUrl } : { orderId }, error: null }
 }
 
 /** applyPromoCode: валидация на сервере (активность, окно, условия), promo_id на корзину */
@@ -280,6 +328,7 @@ export async function updateOrderStatus(
 		.select({
 			status: orders.status,
 			paymentStatus: orders.paymentStatus,
+			paymentMethod: orders.paymentMethod,
 			fulfillment: orders.fulfillment,
 		})
 		.from(orders)
@@ -295,10 +344,28 @@ export async function updateOrderStatus(
 		return { data: null, error: 'Оплаченный заказ отменить нельзя' }
 	}
 
+	// этап 9, Q18: кухня не стартует неоплаченный онлайн-заказ — оплата резервом.
+	// Живой отказ админом (cancelled_by_vendor) не гвардится — человек решает сам.
+	const isOnlinePending = order.paymentMethod === 'online' && order.paymentStatus === 'pending'
+	if (next === 'preparing' && isOnlinePending) {
+		return { data: null, error: 'Заказ ожидает оплаты' }
+	}
+
+	// этап 9, Q21: при получении деньги собраны в момент передачи — доставка/выдача
+	// оплаченного on_receipt-заказа переворачивает paymentStatus в той же транзакции
+	const collectOnReceipt =
+		order.paymentMethod === 'on_receipt' &&
+		order.paymentStatus === 'pending' &&
+		(next === 'delivered' || next === 'picked_up')
+
 	const updated = await db.transaction(async (tx) => {
 		const rows = await tx
 			.update(orders)
-			.set({ status: next, updatedAt: new Date() })
+			.set({
+				status: next,
+				...(collectOnReceipt ? { paymentStatus: 'paid' as const } : {}),
+				updatedAt: new Date(),
+			})
 			.where(and(eq(orders.id, orderId), eq(orders.status, order.status)))
 			.returning({ id: orders.id })
 		if (rows.length === 0) return false // гонка: статус ушёл вперёд между select и update

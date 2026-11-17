@@ -4,12 +4,12 @@
 
 **Blocked by:** —
 
-**Status:** open
+**Status:** resolved
 
-- [ ] `pnpm db:generate` → `drizzle/0006_*.sql` закоммичен, `pnpm db:migrate` накатывает чисто, повтор идемпотентен
-- [ ] Схема: `orders.paymentMethod`, `unique(payments.orderId)`, `paymentMethods` + типы `$inferSelect` экспортированы
-- [ ] `ORDER_STATUSES`/`TERMINAL_STATUSES`/`STATUS_LABELS` знают `cancelled_by_timeout`; tsc зелёный
-- [ ] `StatusBadge` рисует destructive для нового статуса
-- [ ] Чипы фильтров `/admin/orders` содержат новый статус (из констант или правкой хардкода)
-- [ ] Сидер: sber + unionpay активны, повторный seed не дублирует
-- [ ] `.env.example` += `PAYMENT_WINDOW_MINUTES=5`
+- [x] `pnpm db:generate` → `drizzle/0006_grey_shard.sql` закоммичен, `pnpm db:migrate` накатывает чисто, повтор идемпотентен
+- [x] Схема: `orders.paymentMethod`, `unique(payments.orderId)`, `paymentMethods` + типы `$inferSelect` экспортированы
+- [x] `ORDER_STATUSES`/`TERMINAL_STATUSES`/`STATUS_LABELS` знают `cancelled_by_timeout`; tsc зелёный
+- [x] `StatusBadge` рисует destructive для нового статуса (семейство `cancelled_`-префикса)
+- [x] Чипы фильтров `/admin/orders` содержат новый статус (выводятся из `ORDER_STATUSES` — автоматически)
+- [x] Сидер: sber + unionpay активны, повторный seed не дублирует (isActive админа переживает reseed)
+- [x] `.env.example` += `PAYMENT_WINDOW_MINUTES=5`

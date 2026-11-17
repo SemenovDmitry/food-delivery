@@ -117,6 +117,8 @@ export default async function AdminOrdersPage({ searchParams }: PageProps<'/admi
 											orderId={order.id}
 											status={order.status as OrderStatus}
 											fulfillment={order.fulfillment === 'pickup' ? 'pickup' : 'delivery'}
+											paymentMethod={order.paymentMethod}
+											paymentStatus={order.paymentStatus}
 										/>
 									</TableCell>
 								</TableRow>

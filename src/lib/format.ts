@@ -54,4 +54,5 @@ export const STATUS_LABELS: Record<OrderStatus, string> = {
 	picked_up: 'Выдан',
 	cancelled_by_customer: 'Отменён клиентом',
 	cancelled_by_vendor: 'Отменён заведением (не принят)',
+	cancelled_by_timeout: 'Отменён: не оплачен',
 }

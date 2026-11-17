@@ -57,6 +57,8 @@ async function ReceiptContent({ params }: { params: Promise<{ id: string }> }) {
 				<OrderTracker
 					orderId={order.id}
 					initialStatus={order.status}
+					initialPaymentMethod={order.paymentMethod}
+					initialPaymentStatus={order.paymentStatus}
 					updatedAt={order.updatedAt.toISOString()}
 				/>
 

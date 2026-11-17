@@ -15,6 +15,9 @@ import {
  * Статусы заказа — фиксированное множество (GLOSSARY «Статус заказа»):
  * цепочка created → preparing → ready, ветка по fulfillment
  * (in_delivery → delivered | picked_up), терминальные отмены.
+ * `cancelled_by_timeout` (этап 9, Q17) — истекло окно оплаты онлайн-заказа;
+ * единственный писатель — система (TTL-гарды lib/payments, свип — автоджоба
+ * этапа 10); админ для живого отказа использует cancelled_by_vendor.
  */
 export const ORDER_STATUSES = [
 	'created',
@@ -25,11 +28,20 @@ export const ORDER_STATUSES = [
 	'picked_up',
 	'cancelled_by_customer',
 	'cancelled_by_vendor',
+	'cancelled_by_timeout',
 ] as const
 export type OrderStatus = (typeof ORDER_STATUSES)[number]
 
 export const ORDER_PAYMENT_STATUSES = ['pending', 'paid'] as const
 export type OrderPaymentStatus = (typeof ORDER_PAYMENT_STATUSES)[number]
+
+/**
+ * Способы оплаты (этап 9, Q16, GLOSSARY «Онлайн-оплата»): on_receipt — всегда
+ * доступен; online — только при ≥1 активном провайдере (payment_methods),
+ * кухня не стартует до оплаты, окно — PAYMENT_WINDOW_MINUTES.
+ */
+export const PAYMENT_METHODS = ['online', 'on_receipt'] as const
+export type PaymentMethodKind = (typeof PAYMENT_METHODS)[number]
 
 export const PAYMENT_STATUSES = ['created', 'processing', 'paid', 'failed', 'cancelled'] as const
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[number]
@@ -220,8 +232,13 @@ export const orders = pgTable('orders', {
 	/** Копейки, считает сервер (settings + fulfillment), клиент не присылает */
 	deliveryFee: integer('delivery_fee').notNull().default(0),
 	status: text('status').notNull().default('created'),
-	/** pending | paid — под этап 9 */
+	/** pending | paid — переворачивается webhook'ом (online) или при получении (on_receipt, этап 9 Q21) */
 	paymentStatus: text('payment_status').notNull().default('pending'),
+	/**
+	 * Способ оплаты (этап 9, Q16): online | on_receipt. Онлайн-заказ не стартует
+	 * кухней до оплаты; окно — PAYMENT_WINDOW_MINUTES, просрочка → cancelled_by_timeout.
+	 */
+	paymentMethod: text('payment_method').notNull().default('on_receipt'),
 	createdAt: timestamp('created_at').notNull().defaultNow(),
 	updatedAt: timestamp('updated_at').notNull().defaultNow(),
 })
@@ -308,20 +325,47 @@ export const settings = pgTable('settings', {
 	updatedAt: timestamp('updated_at').notNull().defaultNow(),
 })
 
-// ─── Заделы этапов 9–11 (пустые таблицы) ─────────────────────────────────────
+// ─── Оплата (этап 9) ─────────────────────────────────────────────────────────
 
-export const payments = pgTable('payments', {
+/**
+ * Провайдеры оплаты — банки-заглушки (GLOSSARY «Провайдер оплаты»):
+ * то, что выбирает пользователь на странице оплаты и переключает админ
+ * тумблерами /admin/payments. Реализация одна (MockProvider, env
+ * PAYMENT_PROVIDER) — code оседает в payments.provider; реальный банк = новый
+ * файл провайдера + фабрика по code, UI не трогается.
+ */
+export const paymentMethods = pgTable('payment_methods', {
 	id: uuid('id').primaryKey().defaultRandom(),
-	orderId: uuid('order_id')
-		.notNull()
-		.references(() => orders.id, { onDelete: 'cascade' }),
-	amount: integer('amount').notNull(), // копейки
-	status: text('status').notNull().default('created'),
-	provider: text('provider').notNull().default('mock'),
-	externalId: text('external_id'),
+	code: text('code').notNull().unique(), // sber | unionpay — id банка в payments.provider
+	label: text('label').notNull(), // «Сбербанк», «UnionPay»
+	/** Выключение последнего активного убирает «Онлайн-оплату» из чекаута (мягко, Q20) */
+	isActive: boolean('is_active').notNull().default(true),
+	position: integer('position').notNull().default(0),
 	createdAt: timestamp('created_at').notNull().defaultNow(),
-	updatedAt: timestamp('updated_at').notNull().defaultNow(),
 })
+
+/**
+ * Одна строка payment на заказ (Q2, unique) — повторная попытка переиспользует
+ * её (новый externalId), история попыток не ведётся. provider — code банка из
+ * payment_methods (до выбора банка — default 'mock'); externalId присваивает
+ * провайдер при initiate/повторе.
+ */
+export const payments = pgTable(
+	'payments',
+	{
+		id: uuid('id').primaryKey().defaultRandom(),
+		orderId: uuid('order_id')
+			.notNull()
+			.references(() => orders.id, { onDelete: 'cascade' }),
+		amount: integer('amount').notNull(), // копейки
+		status: text('status').notNull().default('created'),
+		provider: text('provider').notNull().default('mock'),
+		externalId: text('external_id'),
+		createdAt: timestamp('created_at').notNull().defaultNow(),
+		updatedAt: timestamp('updated_at').notNull().defaultNow(),
+	},
+	(table) => [unique('payments_order_id_unique').on(table.orderId)],
+)
 
 /** Аутбокс уведомлений: строка пишется в транзакции события (§5.16) */
 export const notifications = pgTable('notifications', {
@@ -363,6 +407,7 @@ export type OrderStatusEvent = typeof orderStatusEvents.$inferSelect
 export type ChatThread = typeof chatThreads.$inferSelect
 export type ChatMessage = typeof chatMessages.$inferSelect
 export type Setting = typeof settings.$inferSelect
+export type PaymentMethod = typeof paymentMethods.$inferSelect
 export type Payment = typeof payments.$inferSelect
 export type Notification = typeof notifications.$inferSelect
 export type ErrorEvent = typeof errorEvents.$inferSelect

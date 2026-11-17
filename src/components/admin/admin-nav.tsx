@@ -4,10 +4,11 @@ import { cn } from 'cn'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
-/** Разделы админки (этап 5 + чат этапа 6): manager видит «Заказы» и «Чаты» (Q2/Q6), остальное — admin */
+/** Разделы админки (этап 5 + чат 6 + оплата 9): manager видит «Заказы» и «Чаты» (Q2/Q6), остальное — admin */
 const LINKS: { href: string; label: string; adminOnly: boolean }[] = [
 	{ href: '/admin/orders', label: 'Заказы', adminOnly: false },
 	{ href: '/admin/chats', label: 'Чаты', adminOnly: false },
+	{ href: '/admin/payments', label: 'Оплата', adminOnly: true },
 	{ href: '/admin/products', label: 'Товары', adminOnly: true },
 	{ href: '/admin/categories', label: 'Категории', adminOnly: true },
 	{ href: '/admin/promotions', label: 'Акции', adminOnly: true },

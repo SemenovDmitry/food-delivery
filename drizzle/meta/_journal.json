@@ -43,6 +43,13 @@
       "when": 1794849483733,
       "tag": "0005_glamorous_tyrannus",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794928550460,
+      "tag": "0006_grey_shard",
+      "breakpoints": true
     }
   ]
 }

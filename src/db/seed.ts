@@ -3,7 +3,15 @@ import { CreateBucketCommand, HeadBucketCommand, PutBucketPolicyCommand } from '
 import { and, eq } from 'drizzle-orm'
 import { S3_BUCKET, s3Client } from '../lib/s3'
 import { db } from './index'
-import { categories, type Product, products, promotions, setItems, user } from './schema'
+import {
+	categories,
+	type Product,
+	paymentMethods,
+	products,
+	promotions,
+	setItems,
+	user,
+} from './schema'
 
 /**
  * Идемпотентный сидер: повторный запуск не создаёт дублей.
@@ -219,6 +227,17 @@ const SEED_USERS = [
 	{ name: 'Клиент Демо', email: 'client@food.local', phone: '+7 999 000-00-03', role: 'customer' },
 ]
 
+/**
+ * Провайдеры оплаты — банки-заглушки (этап 9, Q12): оба активны, «Онлайн-оплата»
+ * доступна в чекауте сразу. Upsert по code — повторный прогон не дублирует;
+ * isActive в set НЕ пишется — тумблеры админа переживают reseed (решения
+ * админки не откатываются сидом).
+ */
+const SEED_PAYMENT_METHODS = [
+	{ code: 'sber', label: 'Сбербанк', position: 1 },
+	{ code: 'unionpay', label: 'UnionPay', position: 2 },
+]
+
 async function upsertProducts(
 	categoryId: number,
 	seedProducts: SeedProduct[],
@@ -380,6 +399,16 @@ async function seed() {
 					emailVerified: values.emailVerified,
 					role: values.role,
 				},
+			})
+	}
+
+	for (const pm of SEED_PAYMENT_METHODS) {
+		await db
+			.insert(paymentMethods)
+			.values({ code: pm.code, label: pm.label, isActive: true, position: pm.position })
+			.onConflictDoUpdate({
+				target: paymentMethods.code,
+				set: { label: pm.label, position: pm.position },
 			})
 	}
 

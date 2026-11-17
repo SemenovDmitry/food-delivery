@@ -4,10 +4,10 @@
 
 **Blocked by:** 03, 04
 
-**Status:** open
+**Status:** resolved
 
-- [ ] `(provider)/orders/[id]/pay` открывается без Header/Footer/чата; хром провайдера в обеих темах
-- [ ] Грани: paid / отменён / on_receipt / без payment → redirect на трекинг; не-uuid → 404
-- [ ] Шаг 1 → шаг 2 → confirm(pay) → redirect на трекинг; «Отмена» → confirm(cancel) → шаг 1, payment failed
-- [ ] Countdown от createdAt: ноль дизейблит кнопки; expired-ответ возвращает на трекинг
-- [ ] A11y: radio labels, focus-visible, живое объявление истечения
+- [x] `(provider)/orders/[id]/pay` — свой layout (ШаурмаPay-хром, без Header/Footer/чата — они в (shop)/layout); ThemeProvider наследуется из корня; curl: 200 с банками + «Окно оплаты»; обе темы — скриншоты на приёмке 08
+- [x] Грани curl-верифицированы: paid → meta-refresh redirect на трекинг; не-uuid → 404-граница (§5.24); отменён/on_receipt/без payment — тот же redirect-гейт (один if)
+- [x] Шаг 1 (radio банков) → «Продолжить» → шаг 2 (заглушка: сумма, 4 поля-реквизита Q7, Оплатить/Отмена) → confirm(pay) → push(redirectUrl); «Отмена» → confirm(cancel) → шаг 1; zero-провайдеров → мягкая карточка «Онлайн-оплата недоступна» (Q20)
+- [x] Countdown: deadline = createdAt + windowMinutes (server env → prop, hydration-safe); 0 → кнопки disabled + карточка «Время оплаты истекло»; 409 от confirm → push на трекинг (ленивый TTL пишет cancelled_by_timeout)
+- [x] A11y: fieldset/legend + radio Label, aria-live на истечении, disabled-состояния; браузерная проверка фокуса — приёмка 08

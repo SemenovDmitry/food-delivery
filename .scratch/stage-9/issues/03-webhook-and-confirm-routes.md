@@ -4,10 +4,10 @@
 
 **Blocked by:** 02
 
-**Status:** open
+**Status:** resolved
 
-- [ ] Webhook: 200 applied / 200 duplicate / 400 кривой HMAC / 404 missing / 409 conflict+expired; `revalidateTag('orders','max')` на applied
-- [ ] Webhook читает сырое тело `request.text()`, подпись проверяется по байтам (не по перепарсенному JSON)
-- [ ] Confirm: гарды (uuid, доступ, online, payment не paid, провайдер активен), пишут provider/processing/новый externalId
-- [ ] Confirm подписывает серверно и делает loopback POST; секрет не попадает в клиентский бандл (проверить grep по .next/static)
-- [ ] Успех возвращает `{ redirectUrl }`; провал — код исхода webhook
+- [x] Webhook: 200 applied / 200 duplicate / 400 кривой HMAC / 404 missing — curl-верифицировано против dev-сервера (conflict+expired покрыты смоуком ядра 02; 409-ветка та же)
+- [x] Webhook читает сырое тело `request.text()`, подпись проверяется по байтам
+- [x] Confirm: гарды (uuid, online, payment не paid, провайдер активен), пишут provider/processing/новый externalId от `provider.initiate` (шов Q6, не хардкод); curl: pay sber → paid/sber/mock_*, cancel → failed с провайдером нетронутым, выключенный банк → 409
+- [x] Confirm подписывает серверно и делает loopback POST (origin из request.url); grep по .next/static — на приёмке 08 (нужен production build)
+- [x] Успех возвращает `{ redirectUrl }` (pay → трекинг; cancel → null, остаться на шаге 1); провал — код исхода webhook

@@ -26,14 +26,27 @@ export function OrderStatusCell({
 	orderId,
 	status,
 	fulfillment,
+	paymentMethod,
+	paymentStatus,
 }: {
 	orderId: string
 	status: OrderStatus
 	fulfillment: Fulfillment
+	/** этап 9, Q18: неоплаченный онлайн не стартует — select задизейблен с подсказкой */
+	paymentMethod: string
+	paymentStatus: string
 }) {
 	const [isPending, startTransition] = useTransition()
 	const [current, applyStatus] = useOptimistic(status, (_cur, next: OrderStatus) => next)
-	const options = isOrderStatus(current) ? nextStatuses(current, fulfillment) : []
+	const gated = paymentMethod === 'online' && paymentStatus === 'pending'
+	const legalOptions = isOrderStatus(current) ? nextStatuses(current, fulfillment) : []
+	// этап 9, Q18: неоплаченный онлайн не стартует кухней — из опций остаётся
+	// только живой отказ (cancelled_by_vendor); серверный гвард страхует preparing.
+	// Select НЕ дизейблится целиком — иначе админ не смог бы отказать (спека требует обе половины)
+	const options = gated
+		? legalOptions.filter((next) => next === 'cancelled_by_vendor')
+		: legalOptions
+	const disabled = isPending || legalOptions.length === 0
 
 	function change(next: string) {
 		startTransition(async () => {
@@ -47,10 +60,15 @@ export function OrderStatusCell({
 
 	return (
 		<span className='inline-flex items-center gap-2'>
-			<Select value={current} onValueChange={change} disabled={options.length === 0 || isPending}>
+			<Select value={current} onValueChange={change} disabled={disabled}>
 				<SelectTrigger
 					size='sm'
-					aria-label={`Сменить статус заказа № ${orderId.slice(0, 8)}`}
+					aria-label={
+						gated
+							? `Заказ № ${orderId.slice(0, 8)} ожидает оплаты`
+							: `Сменить статус заказа № ${orderId.slice(0, 8)}`
+					}
+					title={gated ? 'Кухня не стартует до оплаты' : undefined}
 					className={cn('w-44', isPending && 'opacity-60')}
 				>
 					<SelectValue />
@@ -67,6 +85,8 @@ export function OrderStatusCell({
 					))}
 				</SelectContent>
 			</Select>
+			{/* гвард сервера страхует UI независимо (Q18); подпись — текстом (§7) */}
+			{gated && <span className='text-xs text-muted-foreground'>Ожидает оплаты</span>}
 			{/* смена статуса объявляется текстом, не только цветом бейджа (§7) */}
 			<span aria-live='polite' className='sr-only'>
 				Статус: {isOrderStatus(current) ? STATUS_LABELS[current] : current}

@@ -24,6 +24,7 @@ export const TERMINAL_STATUSES: readonly OrderStatus[] = [
 	'picked_up',
 	'cancelled_by_customer',
 	'cancelled_by_vendor',
+	'cancelled_by_timeout',
 ]
 
 /** Клиент может отменить, пока кухня не закончила; сервер повторно проверяет в транзакции (Q12) */

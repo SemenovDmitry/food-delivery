@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { PAYMENT_METHODS } from '@/db/schema'
 
 /**
  * Схема формы чекаута — единый источник правил валидации:
@@ -19,6 +20,8 @@ export const checkoutFormSchema = z
 			.max(20, 'Телефон слишком длинный')
 			.refine((value) => value.replace(/\D/g, '').length >= 10, 'Укажите корректный телефон'),
 		fulfillment: z.enum(['delivery', 'pickup']),
+		/** Способ оплаты (этап 9, Q16): без transform'ов — пара *ServerSchema не нужна */
+		paymentMethod: z.enum(PAYMENT_METHODS),
 		address: z.string().trim().max(200, 'Адрес слишком длинный'),
 		comment: z.string().trim().max(500, 'Комментарий слишком длинный'),
 	})

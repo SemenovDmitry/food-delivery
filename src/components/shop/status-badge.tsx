@@ -18,6 +18,7 @@ const STATUS_CLASSES: Record<OrderStatus, string> = {
 	picked_up: 'border-status-success/30 bg-status-success/10 text-status-success',
 	cancelled_by_customer: '',
 	cancelled_by_vendor: '',
+	cancelled_by_timeout: '',
 }
 
 export function StatusBadge({ status, className }: { status: string; className?: string }) {
@@ -29,7 +30,8 @@ export function StatusBadge({ status, className }: { status: string; className?:
 			</Badge>
 		)
 	}
-	const cancelled = status === 'cancelled_by_customer' || status === 'cancelled_by_vendor'
+	// отмены — семейство «кто отменил» (GLOSSARY): destructive для всех существующих и будущих
+	const cancelled = status.startsWith('cancelled_')
 	return (
 		<Badge
 			variant={cancelled ? 'destructive' : 'outline'}

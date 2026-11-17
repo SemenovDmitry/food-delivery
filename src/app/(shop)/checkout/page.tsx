@@ -4,6 +4,7 @@ import { CheckoutForm } from '@/components/shop/checkout-form'
 import { Skeleton } from '@/components/ui/skeleton'
 import { loadCartViewData } from '@/lib/cart-view-data'
 import { enforceNotBlocked, getSession } from '@/lib/session'
+import { hasActivePaymentProvider } from '@/queries/payments'
 
 type CheckoutPageProps = PageProps<'/checkout'>
 
@@ -37,6 +38,10 @@ async function CheckoutContent({
 	const session = await getSession()
 	await enforceNotBlocked() // забаненный/архивированный — срез до подтверждения заказа (этап 5, Q14)
 
+	// «Онлайн-оплата» показывается при ≥1 активном провайдере (этап 9, Q20):
+	// оба выключены → в форме остаётся только «При получении» (мягкая деградация)
+	const hasActiveProviders = await hasActivePaymentProvider()
+
 	return (
 		<CheckoutForm
 			lines={data.lines}
@@ -45,6 +50,7 @@ async function CheckoutContent({
 			initialFulfillment={initialFulfillment}
 			initialName={session?.user.name ?? ''}
 			initialPhone={session?.user.phoneNumber ?? ''}
+			hasActiveProviders={hasActiveProviders}
 		/>
 	)
 }

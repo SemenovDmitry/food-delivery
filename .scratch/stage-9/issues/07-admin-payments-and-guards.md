@@ -4,10 +4,10 @@
 
 **Blocked by:** 01, 02
 
-**Status:** open
+**Status:** resolved
 
-- [ ] `/admin/payments`: тумблеры работают (оптимистично, откат при ошибке), гард страницы по образцу settings
-- [ ] Выключение обоих провайдеров: тост-предупреждение на последнем; в чекауте онлайн исчезает (связка с 04)
-- [ ] Гвард «Заказ ожидает оплаты»: action отказывает, select disabled в UI
-- [ ] on_receipt → delivered/picked_up: paymentStatus=paid в той же транзакции; БД верифицирована
-- [ ] AdminNav содержит новый пункт с корректной ролью
+- [x] `/admin/payments` в `(admin-only)`: тумблеры Switch (useOptimistic, toast-откат, идемпотентный conditional UPDATE), гард requireAdminOnly — curl без сессии → 307 /login
+- [x] Выключение последнего активного: toast.warning «Онлайн-оплата станет недоступна»; в чекауте онлайн исчезает — связка с 04 (hasActiveProviders), браузерная проверка — приёмка 08
+- [x] Гвард «Заказ ожидает оплаты»: action отказывает (online+pending → preparing запрещён; отмены не гвардятся — живой отказ работает), select disabled + подпись «Ожидает оплаты» (aria-label, title)
+- [x] on_receipt → delivered/picked_up: paymentStatus=paid в ТОЙ ЖЕ транзакции updateOrderStatus (conditional UPDATE гасит гонку)
+- [x] AdminNav += «Оплата» (adminOnly: true — как настройки: влияет на чекаут магазина)

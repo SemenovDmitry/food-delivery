@@ -4,10 +4,10 @@
 
 **Blocked by:** —
 
-**Status:** open
+**Status:** resolved
 
-- [ ] Типы/фабрика/MockProvider/HMAC по контракту выше; tsc зелёный
-- [ ] `verifyWebhook` отклоняет кривую подпись и кривой JSON (`null`), честную принимает
-- [ ] `applyPaymentEvent`: applied/duplicate/missing/conflict/expired — покрыты юнит-логикой (руками против dev-БД)
-- [ ] TTL-гард считает от `orders.createdAt` + `PAYMENT_WINDOW_MINUTES`, пишет `cancelled_by_timeout` + событие
-- [ ] Fail-fast на пустой `PAYMENTS_WEBHOOK_SECRET` — внутри вызова
+- [x] Типы/фабрика/MockProvider/HMAC по контракту выше; tsc зелёный (paymentWindowMinutes вынесен в `window.ts` — без циркулярного импорта с index)
+- [x] `verifyWebhook` отклоняет кривую подпись и кривой JSON (`null`), честную принимает
+- [x] `applyPaymentEvent`: applied/duplicate/missing/conflict/expired — смоук `scripts/smoke-payments.ts` против dev-БД (все 6 сценариев,/fixtures чистятся)
+- [x] TTL-гард считает от `orders.createdAt` + `PAYMENT_WINDOW_MINUTES`, пишет `cancelled_by_timeout` + событие
+- [x] Fail-fast на пустой `PAYMENTS_WEBHOOK_SECRET` — внутри вызова (verifyWebhook → null)

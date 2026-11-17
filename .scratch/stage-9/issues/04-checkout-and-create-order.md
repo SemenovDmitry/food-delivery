@@ -4,10 +4,14 @@
 
 **Blocked by:** 01, 02
 
-**Status:** open
+**Status:** resolved
 
-- [ ] Схема расширенa без transform'ов; серверный safeParse валидирует `paymentMethod`
-- [ ] Ревалидация: online без активных провайдеров → отказ до создания заказа; БД не засоряется
-- [ ] online: payment-строка (amount верный, externalId), `payUrl` в результате; initiate упал → заказ остаётся, ошибка
-- [ ] on_receipt: прежний поток, payment-строки нет
-- [ ] Radio в форме: дефолт «При получении», онлайн скрыт при нуле провайдеров, redirect по `payUrl`
+- [x] Схема расширенa без transform'ов; серверный safeParse валидирует `paymentMethod`
+- [x] Ревалидация: online без активных провайдеров → отказ до создания заказа (`limit(1)` — БД не засоряется)
+- [x] online: payment-строка (amount = subtotal − скидка + доставка) + `payUrl`; initiate упал → заказ остаётся (см. Comments)
+- [x] on_receipt: прежний поток, payment-строки нет
+- [x] Radio в форме: дефолт «При получении», онлайн скрыт при нуле провайдеров (hasActiveProviders из RSC), redirect по `payUrl`; нативные radio + label + aria-describedby (RadioGroup в реестре нет)
+
+## Comments
+
+- 2026-11-17 (implement): отклонение от буквы тикета, осознанное. «initiate бросил → вернуть error» даёт UX-ловушку: к моменту initiate транзакция уже закоммичена (заказ создан, корзина очищена) — ошибка в форме спровоцирует повторную отправку и ДУБЛЬ заказа. Реализация: payment-строка вставляется В транзакции (status created, externalId null), initiate после коммита best-effort — при падении заказ возвращается успешно без payUrl → пользователь попадает на трекинг → CTA «Оплатить» (Q8-семантика «оплата позже» сохранена); confirm при null externalId заденет initiate заново. Для мока initiate не падает; для реального провайдера — тот же graceful-путь.
