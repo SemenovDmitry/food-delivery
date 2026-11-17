@@ -4,7 +4,7 @@ import { orderStatusEvents, orders, payments } from '@/db/schema'
 import { isUuid } from '@/lib/id'
 import { ACTIVE_STATUSES } from '@/lib/order-timeline'
 import type { WebhookEvent } from './types'
-import { paymentWindowMinutes } from './window'
+import { paymentWindowCutoff } from './window'
 
 /**
  * Общее ядро обработки события webhook'а (этап 9, Q5/Q17) — без HTTP: роут
@@ -58,11 +58,10 @@ export async function applyPaymentEvent(event: WebhookEvent): Promise<PaymentEve
 		// отменяется системой — paid сквозь просрочку не проходит. Conditional
 		// UPDATE по статусу (прецедент cancelOrder): между select и транзакцией
 		// cancelOrder мог успеть отменить заказ — тогда БД не трогаем
-		const windowMs = paymentWindowMinutes() * 60 * 1000
 		const expired =
 			order.paymentMethod === 'online' &&
 			order.paymentStatus === 'pending' &&
-			order.createdAt.getTime() + windowMs < Date.now()
+			order.createdAt < paymentWindowCutoff()
 		if (expired) {
 			const timedOut = await tx
 				.update(orders)

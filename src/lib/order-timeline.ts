@@ -43,6 +43,11 @@ export function isTerminalStatus(value: string): boolean {
 /** Тип исполнения заказа: ветка цепочки статусов (GLOSSARY «Fulfillment») */
 export type Fulfillment = 'delivery' | 'pickup'
 
+/** fulfillment из text-колонки БД: кривое значение → delivery (дефолт ветки) */
+export function fulfillmentOf(value: string): Fulfillment {
+	return value === 'pickup' ? 'pickup' : 'delivery'
+}
+
 /**
  * Легальные следующие статусы для админ-смены (этап 5, Q3): только вперёд по
  * цепочке своего fulfillment, назад никогда; `cancelled_by_vendor` — из

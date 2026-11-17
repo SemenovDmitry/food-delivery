@@ -8,3 +8,12 @@ export function paymentWindowMinutes(): number {
 	const raw = Number(process.env.PAYMENT_WINDOW_MINUTES)
 	return Number.isFinite(raw) && raw > 0 ? raw : 5
 }
+
+/**
+ * Момент, до которого окно оплаты живо: `createdAt < cutoff` ⇒ просрочен.
+ * Единый предикат для ленивого TTL-гарда webhook-core и свипа автоджобы
+ * (этап 10, ревью: дубль предиката = риск расползания).
+ */
+export function paymentWindowCutoff(now = Date.now()): Date {
+	return new Date(now - paymentWindowMinutes() * 60_000)
+}

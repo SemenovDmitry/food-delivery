@@ -17,12 +17,8 @@ import { getCartLines, getOrCreateCart } from '@/lib/cart'
 import { MAX_QTY } from '@/lib/constants'
 import { deliveryFeeFor } from '@/lib/delivery'
 import { isUuid } from '@/lib/id'
-import {
-	CANCELLABLE_STATUSES,
-	type Fulfillment,
-	isOrderStatus,
-	nextStatuses,
-} from '@/lib/order-timeline'
+import { CANCELLABLE_STATUSES } from '@/lib/order-timeline'
+import { transitionOrderStatus } from '@/lib/order-transition'
 import { getPaymentProvider } from '@/lib/payments'
 import { calcDiscount, isPromoInWindow, toCalcLines } from '@/lib/promo'
 import type { CheckoutFormValues } from '@/lib/schemas/checkout'
@@ -308,11 +304,9 @@ export async function cancelOrder(orderId: string): Promise<ActionResult<{ cance
 }
 
 /**
- * Смена статуса админкой (этап 5, Q3): только по карте nextStatuses (вперёд по
- * своему fulfillment), оплаченные не отменяются никогда (refund — этап 9).
- * Гонка гасится conditional UPDATE в транзакции (паттерн cancelOrder); строка
- * в order_status_events — в той же транзакции (писатели статуса не ходят мимо
- * таблицы, Q15a этапа 4). SMS «заказ готов» — этап 10, здесь граница.
+ * Смена статуса админкой (этап 5, Q3): тонкая обёртка над ядром
+ * transitionOrderStatus (этап 10, Q3) — здесь только auth и кеш-вызовы,
+ * все гварды/транзакция/события/SMS живут в ядре и общие с автоджобой.
  */
 export async function updateOrderStatus(
 	orderId: string,
@@ -320,62 +314,11 @@ export async function updateOrderStatus(
 ): Promise<ActionResult<{ status: OrderStatus }>> {
 	await requireAdmin() // живой гвард (этап 5, Q14); не-admin → срез сессии + /login
 
-	// кривой uuid роняет запрос в Postgres — отсекаем до БД (§5.24)
-	if (!isUuid(orderId)) return { data: null, error: 'Заказ не найден' }
-	if (!isOrderStatus(next)) return { data: null, error: 'Недопустимый статус' }
-
-	const [order] = await db
-		.select({
-			status: orders.status,
-			paymentStatus: orders.paymentStatus,
-			paymentMethod: orders.paymentMethod,
-			fulfillment: orders.fulfillment,
-		})
-		.from(orders)
-		.where(eq(orders.id, orderId))
-	if (!order) return { data: null, error: 'Заказ не найден' }
-	if (!isOrderStatus(order.status)) return { data: null, error: 'Заказ в недопустимом статусе' }
-
-	const fulfillment: Fulfillment = order.fulfillment === 'pickup' ? 'pickup' : 'delivery'
-	if (!nextStatuses(order.status, fulfillment).includes(next)) {
-		return { data: null, error: 'Недопустимый переход статуса' }
+	const result = await transitionOrderStatus(orderId, next)
+	if (result.data) {
+		// Server Action + read-your-own-writes → updateTag (revalidateTag(tag) в v16 deprecated)
+		updateTag('orders')
+		revalidatePath('/admin/orders')
 	}
-	if (next === 'cancelled_by_vendor' && order.paymentStatus !== 'pending') {
-		return { data: null, error: 'Оплаченный заказ отменить нельзя' }
-	}
-
-	// этап 9, Q18: кухня не стартует неоплаченный онлайн-заказ — оплата резервом.
-	// Живой отказ админом (cancelled_by_vendor) не гвардится — человек решает сам.
-	const isOnlinePending = order.paymentMethod === 'online' && order.paymentStatus === 'pending'
-	if (next === 'preparing' && isOnlinePending) {
-		return { data: null, error: 'Заказ ожидает оплаты' }
-	}
-
-	// этап 9, Q21: при получении деньги собраны в момент передачи — доставка/выдача
-	// оплаченного on_receipt-заказа переворачивает paymentStatus в той же транзакции
-	const collectOnReceipt =
-		order.paymentMethod === 'on_receipt' &&
-		order.paymentStatus === 'pending' &&
-		(next === 'delivered' || next === 'picked_up')
-
-	const updated = await db.transaction(async (tx) => {
-		const rows = await tx
-			.update(orders)
-			.set({
-				status: next,
-				...(collectOnReceipt ? { paymentStatus: 'paid' as const } : {}),
-				updatedAt: new Date(),
-			})
-			.where(and(eq(orders.id, orderId), eq(orders.status, order.status)))
-			.returning({ id: orders.id })
-		if (rows.length === 0) return false // гонка: статус ушёл вперёд между select и update
-		await tx.insert(orderStatusEvents).values({ orderId, status: next })
-		return true
-	})
-
-	if (!updated) return { data: null, error: 'Статус уже изменён — обновите список' }
-
-	updateTag('orders')
-	revalidatePath('/admin/orders')
-	return { data: { status: next }, error: null }
+	return result
 }
