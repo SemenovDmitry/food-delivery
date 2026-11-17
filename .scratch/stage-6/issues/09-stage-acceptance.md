@@ -4,10 +4,14 @@
 
 **Blocked by:** 06, 07, 08
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] curl-сценарии: init ×2, internal-негативы (403/forbidden/validation), upgrade-отказ
-- [ ] Браузерные Т1–Т8 со скриншотами в `.scratch/stage-6/screenshots/`
-- [ ] SQL-верификация: messages, last_read_at, усиновление
-- [ ] lint/tsc×2/build; docker build + prod compose (`up -d --build`) + smoke + возврат dev
-- [ ] AGENTS §3/§6 обновлён (чекбоксы [x], приёмка), коммит «Этап 6»
+- [x] curl-сценарии: init ×2, internal-негативы (403/forbidden/validation), upgrade-отказ
+- [x] Браузерные Т1–Т8 со скриншотами в `.scratch/stage-6/screenshots/`
+- [x] SQL-верификация: messages, last_read_at, усиновление
+- [x] lint/tsc×2/build; docker build + prod compose (`up -d --build`) + smoke + возврат dev
+- [x] AGENTS §3/§6 обновлён (чекбоксы [x], приёмка), коммит «Этап 6»
+
+## Comments
+
+- Т1–Т8 пройдены против prod-стека; Б1 (reconnect через fetch умирал в фоновой вкладке) найден и исправлен — чистый WS-луп + re-init только в onopen wasReconnect; Т8-одновременность в IAB не воспроизводима (общие куки) — комната operators доказана логом upgrade + фанаутом NOTIFY.

@@ -1,4 +1,5 @@
 import {
+	bigserial,
 	boolean,
 	integer,
 	jsonb,
@@ -252,6 +253,53 @@ export const orderStatusEvents = pgTable('order_status_events', {
 	createdAt: timestamp('created_at').notNull().defaultNow(),
 })
 
+// ─── Чат поддержки (этап 6, WS — §5.22) ──────────────────────────────────────
+
+/** Направление сообщения (GLOSSARY «Направление сообщения»): пишет клиент | отвечает оператор */
+export const CHAT_DIRECTIONS = ['customer', 'operator'] as const
+export type ChatDirection = (typeof CHAT_DIRECTIONS)[number]
+
+/**
+ * Один постоянный тред на идентичность (Q2, GLOSSARY «Тред поддержки»):
+ * у юзера — по user_id, у гостя — по guest_token из httpOnly-куки `chat_token`.
+ * Unique на nullable-колонках: множественные NULL в Postgres не конфликтуют.
+ * Гостевой тред усыновляется при логине (UPDATE user_id), если своего ещё нет.
+ */
+export const chatThreads = pgTable(
+	'chat_threads',
+	{
+		id: uuid('id').primaryKey().defaultRandom(),
+		// text: ссылка на user.id (better-auth использует text-идентификаторы); cascade — тред не осиротеет
+		userId: text('user_id').references(() => user.id, { onDelete: 'cascade' }),
+		guestToken: uuid('guest_token'),
+		/** Непрочитанные: customer-сообщения после operator_last_read_at, симметрично для клиента */
+		customerLastReadAt: timestamp('customer_last_read_at'),
+		operatorLastReadAt: timestamp('operator_last_read_at'),
+		createdAt: timestamp('created_at').notNull().defaultNow(),
+		updatedAt: timestamp('updated_at').notNull().defaultNow(),
+	},
+	(table) => [
+		unique('chat_threads_user_id_unique').on(table.userId),
+		unique('chat_threads_guest_token_unique').on(table.guestToken),
+	],
+)
+
+/**
+ * Сообщения треда. id — bigserial: порядок отображения = id (uuid не нужен —
+ * айдишники не попадают в URL, isUuid-гард не требуется). text — 1..2000
+ * после trim, валидация zod-схемой lib/schemas/chat.ts; колонка без CHECK.
+ */
+export const chatMessages = pgTable('chat_messages', {
+	id: bigserial('id', { mode: 'number' }).primaryKey(),
+	threadId: uuid('thread_id')
+		.notNull()
+		.references(() => chatThreads.id, { onDelete: 'cascade' }),
+	direction: text('direction').notNull(), // CHAT_DIRECTIONS
+	senderId: text('sender_id').references(() => user.id, { onDelete: 'set null' }),
+	text: text('text').notNull(),
+	createdAt: timestamp('created_at').notNull().defaultNow(),
+})
+
 // ─── Настройки (key/value) — этап 1: доставка; форма в админке — этап 5 ─────
 
 export const settings = pgTable('settings', {
@@ -312,6 +360,8 @@ export type CartItem = typeof cartItems.$inferSelect
 export type Order = typeof orders.$inferSelect
 export type OrderItem = typeof orderItems.$inferSelect
 export type OrderStatusEvent = typeof orderStatusEvents.$inferSelect
+export type ChatThread = typeof chatThreads.$inferSelect
+export type ChatMessage = typeof chatMessages.$inferSelect
 export type Setting = typeof settings.$inferSelect
 export type Payment = typeof payments.$inferSelect
 export type Notification = typeof notifications.$inferSelect

@@ -4,11 +4,13 @@
 
 **Blocked by:** 04, 05
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Страница + RSC-список (connection+Suspense, ≤50 тредов, phone/unknown, unread)
-- [ ] Action истории с гардами (requireAdmin + enforceNotBlocked)
-- [ ] Консоль: subscribe-operators, новые табы по NOTIFY, бейджи непрочитанных на табах
-- [ ] Ответ из таба через WS-релей (send/read, dedupe); авто-read открытого таба
-- [ ] AdminNav + «Чаты» (adminOnly: false); manager видит операторскую
-- [ ] Ручная проверка: два оператора в двух вкладках видят табы и сообщения одновременно
+- [x] Страница + RSC-список (connection+Suspense, ≤50 тредов, phone/unknown, unread)
+- [x] Action истории с гардами (requireAdmin + enforceNotBlocked)
+- [x] Консоль: subscribe-operators, новые табы по NOTIFY, бейджи непрочитанных на табах
+- [x] Ответ из таба через WS-релей (send/read, dedupe); авто-read открытого таба
+- [x] AdminNav + «Чаты» (adminOnly: false); manager видит операторскую
+- [x] Ручная проверка: два оператора в двух вкладках видят табы и сообщения одновременно
+
+- Code-review 6: осознанно НЕ выносится общий useChatSocket/ChatMessageList для виджета и консоли (дубликат JSX/ERROR_LABELS/WS_URL) — обе стороны стабильны и разошлись в семантике (виджет: init-крит-путь, консоль: re-fetch тредов); вынос — при следующем касании чата. Конкретика ревью исправлена: intentionalClose-гард консоли, refreshThreads при реконнекте, стрелки табов + tabpanel, toBroadcastMessage-маппинг, aria-live без role=status, guest_token освобождается при усиновлении, DATABASE_URL-фолбэк в env шлюза.

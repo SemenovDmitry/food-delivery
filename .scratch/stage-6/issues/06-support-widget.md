@@ -4,11 +4,11 @@
 
 **Blocked by:** 03, 05
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Кнопка + Sheet + лента + инпут по a11y-чеклисту (role=log, aria-live, клавиатура)
-- [ ] init → subscribe → send/read цикл; ack/error/message; dedupe по id; tempId-стейты
-- [ ] Reconnect backoff + re-init; WS-down → инпут disabled + «Нет соединения»
-- [ ] `getChatUnread` action + поллинг 30 с (localStorage-гейт, document.hidden)
-- [ ] Закрытие Sheet → disconnect; на (auth) и /admin виджета нет
-- [ ] Ручная проверка: диалог двух вкладок (гость/оператор) живёт без перезагрузки
+- [x] Кнопка + Sheet + лента + инпут по a11y-чеклисту (role=log, aria-live, клавиатура)
+- [x] init → subscribe → send/read цикл; ack/error/message; dedupe по id; tempId-стейты
+- [x] Reconnect backoff + re-init; WS-down → инпут disabled + «Нет соединения»
+- [x] `getChatUnread` action + поллинг 30 с (localStorage-гейт, document.hidden)
+- [x] Закрытие Sheet → disconnect; на (auth) и /admin виджета нет
+- [x] Ручная проверка: диалог двух вкладок (гость/оператор) живёт без перезагрузки

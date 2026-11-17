@@ -4,11 +4,11 @@
 
 **Blocked by:** 05
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] `.env.example`: две новые переменные с комментами
-- [ ] ARG+ENV NEXT_PUBLIC_WS_URL на build-стадии корневого Dockerfile; app build.args в prod-compose
-- [ ] `ws-gateway/Dockerfile` multi-stage; docker build шлюза проходит локально
-- [ ] prod-compose: сервис шлюза (порт 3001, env, depends_on) поднимается вместе со стеком
-- [ ] Root tsconfig exclude + pre-commit tsc ×2 (хук зелёный на чистом дереве)
-- [ ] Дисциплина §5.13: docker build + `docker compose up` проходят перед коммитом этапа
+- [x] `.env.example`: две новые переменные с комментами
+- [x] ARG+ENV NEXT_PUBLIC_WS_URL на build-стадии корневого Dockerfile; app build.args в prod-compose
+- [x] `ws-gateway/Dockerfile` multi-stage; docker build шлюза проходит локально
+- [x] prod-compose: сервис шлюза (порт 3001, env, depends_on) поднимается вместе со стеком
+- [x] Root tsconfig exclude + pre-commit tsc ×2 (хук зелёный на чистом дереве)
+- [x] Дисциплина §5.13: docker build + `docker compose up` проходят перед коммитом этапа

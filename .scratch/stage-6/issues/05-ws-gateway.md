@@ -4,13 +4,17 @@
 
 **Blocked by:** 04
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Workspace-пакет: pnpm-workspace `packages:`, lockfile перегенерирован, `tsc -p ws-gateway` чист
-- [ ] env fail-fast (zod): все 4 переменные, понятная ошибка при отсутствии
-- [ ] upgrade: Origin + сессия (get-session) / кука chat_token / отказ
-- [ ] Комнаты: треды + operators; subscribe через internal — один раз на соединение
-- [ ] Релей send/read → internal → ack/error; LISTEN `chat` → broadcast в обе аудитории
-- [ ] ping/pong 30 с; дубликат протокола с указателем на контракт
-- [ ] Скрипт `pnpm dev:gateway` поднимает шлюз на :3001 (node --watch + tsx-лоадер, без новых зависимостей)
-- [ ] Ручная проверка: WS-клиент-скрипт подключается, subscribe проходит, сообщение из internal-NOTIFY приходит в комнату
+- [x] Workspace-пакет: pnpm-workspace `packages:`, lockfile перегенерирован, `tsc -p ws-gateway` чист
+- [x] env fail-fast (zod): все 4 переменные, понятная ошибка при отсутствии
+- [x] upgrade: Origin + сессия (get-session) / кука chat_token / отказ
+- [x] Комнаты: треды + operators; subscribe через internal — один раз на соединение
+- [x] Релей send/read → internal → ack/error; LISTEN `chat` → broadcast в обе аудитории
+- [x] ping/pong 30 с; дубликат протокола с указателем на контракт
+- [x] Скрипт `pnpm dev:gateway` поднимает шлюз на :3001 (node --watch + tsx-лоадер, без новых зависимостей)
+- [x] Ручная проверка: WS-клиент-скрипт подключается, subscribe проходит, сообщение из internal-NOTIFY приходит в комнату
+
+## Comments
+
+- Приёмка: pnpm deploy требует --legacy (pnpm 11), tsc напрямую из node_modules (verify-deps абортит без TTY), .dockerignore **/node_modules — см. §5.35; smoke-скрипт удалён после прогона (401/403/гостевой цикл — в чекбоксе этапа AGENTS).

@@ -4,10 +4,10 @@
 
 **Blocked by:** —
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Схема в `src/db/schema.ts` по конвенциям репо (uuid/text FK с комментом «better-auth использует text-идентификаторы», inline timestamps, unique через третий аргумент)
-- [ ] `pnpm db:generate` → `drizzle/0005_*.sql` закоммичен, `pnpm db:migrate` накатывает чисто
-- [ ] `CHAT_DIRECTIONS` + типы `ChatThread`/`ChatMessage`/`ChatDirection` экспортированы из схемы
-- [ ] `lib/schemas/chat.ts`: схема текста (trim, 1..2000), переиспользуется сервером
-- [ ] Миграция не ломает существующие таблицы; повторный `db:migrate` идемпотентен
+- [x] Схема в `src/db/schema.ts` по конвенциям репо (uuid/text FK с комментом «better-auth использует text-идентификаторы», inline timestamps, unique через третий аргумент)
+- [x] `pnpm db:generate` → `drizzle/0005_*.sql` закоммичен, `pnpm db:migrate` накатывает чисто
+- [x] `CHAT_DIRECTIONS` + типы `ChatThread`/`ChatMessage`/`ChatDirection` экспортированы из схемы
+- [x] `lib/schemas/chat.ts`: схема текста (trim, 1..2000), переиспользуется сервером
+- [x] Миграция не ломает существующие таблицы; повторный `db:migrate` идемпотентен

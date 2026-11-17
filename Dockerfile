@@ -11,6 +11,11 @@ FROM base AS build
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+# NEXT_PUBLIC_* инлайнятся в бандл ТОЛЬКО на build (§5.32-г): адрес WS-шлюза для
+# браузера. ARG переопределяется build.args из prod-compose; дефолт — локальный
+# prod-стек (фолбэк-переменной для клиентского кода не существует).
+ARG NEXT_PUBLIC_WS_URL=ws://localhost:3001
+ENV NEXT_PUBLIC_WS_URL=${NEXT_PUBLIC_WS_URL}
 ENV NEXT_TELEMETRY_DISABLED=1
 # Заглушка только на СБОРКУ (better-auth валидирует секрет при инициализации модуля;
 # нейтральное имя — чтобы не триггерить BuildKit SecretsUsedInArgOrEnv)

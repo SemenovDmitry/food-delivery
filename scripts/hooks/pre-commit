@@ -9,4 +9,7 @@ pnpm exec biome check .
 echo "[pre-commit] tsc --noEmit..."
 pnpm exec tsc --noEmit
 
+echo "[pre-commit] tsc ws-gateway..."
+pnpm exec tsc -p ws-gateway --noEmit
+
 echo "[pre-commit] ok"

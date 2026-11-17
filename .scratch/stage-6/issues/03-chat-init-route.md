@@ -4,10 +4,10 @@
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Идентичность: сессия → кука → создание токена+куки (прецедент cart_id)
-- [ ] Upsert треда + усиновление гостевого при логине (свой есть → гостевой осиротеет)
-- [ ] `customer_last_read_at = now()` на каждый init
-- [ ] Ответ {threadId, messages ≤50} + `Cache-Control: no-store`
-- [ ] curl: гость 1-й вызов → Set-Cookie + пустой тред; 2-й → тот же threadId; залогиненный → тред по userId
+- [x] Идентичность: сессия → кука → создание токена+куки (прецедент cart_id)
+- [x] Upsert треда + усиновление гостевого при логине (свой есть → гостевой осиротеет)
+- [x] `customer_last_read_at = now()` на каждый init
+- [x] Ответ {threadId, messages ≤50} + `Cache-Control: no-store`
+- [x] curl: гость 1-й вызов → Set-Cookie + пустой тред; 2-й → тот же threadId; залогиненный → тред по userId

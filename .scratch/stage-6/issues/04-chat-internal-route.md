@@ -4,10 +4,10 @@
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Гард секрета: нет env → fail-fast на старте; неверный → 403
-- [ ] Discriminated union send|read|join + zod-схемы identity
-- [ ] send: живая перевалидация (владение треда / роль+бан+архив) → INSERT+NOTIFY → {message}
-- [ ] read: UPDATE customer/operator last_read_at по side; join: ок владельцу и оператору
-- [ ] curl-негативы: без секрета 403; guest-чужой тред → forbidden; текст >2000 → validation
+- [x] Гард секрета: нет env → fail-fast на старте; неверный → 403
+- [x] Discriminated union send|read|join + zod-схемы identity
+- [x] send: живая перевалидация (владение треда / роль+бан+архив) → INSERT+NOTIFY → {message}
+- [x] read: UPDATE customer/operator last_read_at по side; join: ок владельцу и оператору
+- [x] curl-негативы: без секрета 403; guest-чужой тред → forbidden; текст >2000 → validation

@@ -1,3 +1,6 @@
+packages:
+  - ws-gateway
+
 allowBuilds:
   esbuild: true
   sharp: false

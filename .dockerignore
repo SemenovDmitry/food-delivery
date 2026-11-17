@@ -1,5 +1,7 @@
 node_modules
+**/node_modules
 .next
+**/.next
 .git
 .scratch
 .zcode
@@ -9,4 +11,6 @@ data
 *.md
 docker-compose*.yml
 Dockerfile
+**/Dockerfile
 .dockerignore
+gw-build-inspect
