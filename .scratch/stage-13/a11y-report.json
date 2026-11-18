@@ -1,5 +1,170 @@
 [
 	{
+		"id": "shop-addtocartbutton--small",
+		"theme": "light",
+		"violations": []
+	},
+	{
+		"id": "shop-addtocartbutton--large-full-width",
+		"theme": "light",
+		"violations": []
+	},
+	{
+		"id": "shop-cartinteractive--full-cart",
+		"theme": "light",
+		"violations": []
+	},
+	{
+		"id": "shop-cartinteractive--with-promo",
+		"theme": "light",
+		"violations": []
+	},
+	{
+		"id": "shop-cartinteractive--empty",
+		"theme": "light",
+		"violations": []
+	},
+	{
+		"id": "shop-checkoutform--empty-guest-form",
+		"theme": "light",
+		"violations": []
+	},
+	{
+		"id": "shop-checkoutform--prefilled-from-session",
+		"theme": "light",
+		"violations": []
+	},
+	{
+		"id": "shop-checkoutform--online-available",
+		"theme": "light",
+		"violations": []
+	},
+	{
+		"id": "shop-checkoutform--online-hidden",
+		"theme": "light",
+		"violations": []
+	},
+	{
+		"id": "shop-copylinkbutton--default",
+		"theme": "light",
+		"violations": []
+	},
+	{
+		"id": "shop-copylinkbutton--with-margin",
+		"theme": "light",
+		"violations": []
+	},
+	{
+		"id": "shop-counter--default",
+		"theme": "light",
+		"violations": []
+	},
+	{
+		"id": "shop-counter--at-min",
+		"theme": "light",
+		"violations": []
+	},
+	{
+		"id": "shop-counter--at-max",
+		"theme": "light",
+		"violations": []
+	},
+	{
+		"id": "shop-counter--small",
+		"theme": "light",
+		"violations": []
+	},
+	{
+		"id": "shop-counter--announce-value",
+		"theme": "light",
+		"violations": []
+	},
+	{
+		"id": "shop-menunav--five-categories",
+		"theme": "light",
+		"violations": []
+	},
+	{
+		"id": "shop-ordertotals--no-discount",
+		"theme": "light",
+		"violations": []
+	},
+	{
+		"id": "shop-ordertotals--with-discount",
+		"theme": "light",
+		"violations": []
+	},
+	{
+		"id": "shop-ordertotals--pickup",
+		"theme": "light",
+		"violations": []
+	},
+	{
+		"id": "shop-ordertotals--fixed-discount",
+		"theme": "light",
+		"violations": []
+	},
+	{
+		"id": "shop-ordertracker--created-on-receipt",
+		"theme": "light",
+		"violations": []
+	},
+	{
+		"id": "shop-ordertracker--unpaid-online",
+		"theme": "light",
+		"violations": []
+	},
+	{
+		"id": "shop-ordertracker--paid-online",
+		"theme": "light",
+		"violations": []
+	},
+	{
+		"id": "shop-ordertracker--in-delivery",
+		"theme": "light",
+		"violations": []
+	},
+	{
+		"id": "shop-ordertracker--delivered",
+		"theme": "light",
+		"violations": []
+	},
+	{
+		"id": "shop-ordertracker--cancelled-by-customer",
+		"theme": "light",
+		"violations": []
+	},
+	{
+		"id": "shop-priceline--plain",
+		"theme": "light",
+		"violations": []
+	},
+	{
+		"id": "shop-priceline--with-old-price",
+		"theme": "light",
+		"violations": []
+	},
+	{
+		"id": "shop-priceline--large",
+		"theme": "light",
+		"violations": []
+	},
+	{
+		"id": "shop-priceline--no-saving",
+		"theme": "light",
+		"violations": []
+	},
+	{
+		"id": "shop-productcard--single-product",
+		"theme": "light",
+		"violations": []
+	},
+	{
+		"id": "shop-productcard--set-with-components",
+		"theme": "light",
+		"violations": []
+	},
+	{
 		"id": "shop-promoblock--available",
 		"theme": "light",
 		"violations": []
@@ -25,6 +190,236 @@
 		"violations": []
 	},
 	{
+		"id": "shop-promocard--percent-with-code",
+		"theme": "light",
+		"violations": []
+	},
+	{
+		"id": "shop-promocard--fixed-no-code",
+		"theme": "light",
+		"violations": []
+	},
+	{
+		"id": "shop-promocard--unlimited",
+		"theme": "light",
+		"violations": []
+	},
+	{
+		"id": "shop-statusbadge--created",
+		"theme": "light",
+		"violations": []
+	},
+	{
+		"id": "shop-statusbadge--preparing",
+		"theme": "light",
+		"violations": []
+	},
+	{
+		"id": "shop-statusbadge--ready",
+		"theme": "light",
+		"violations": []
+	},
+	{
+		"id": "shop-statusbadge--in-delivery",
+		"theme": "light",
+		"violations": []
+	},
+	{
+		"id": "shop-statusbadge--delivered",
+		"theme": "light",
+		"violations": []
+	},
+	{
+		"id": "shop-statusbadge--picked-up",
+		"theme": "light",
+		"violations": []
+	},
+	{
+		"id": "shop-statusbadge--cancelled-by-customer",
+		"theme": "light",
+		"violations": []
+	},
+	{
+		"id": "shop-statusbadge--cancelled-by-vendor",
+		"theme": "light",
+		"violations": []
+	},
+	{
+		"id": "shop-statusbadge--cancelled-by-timeout",
+		"theme": "light",
+		"violations": []
+	},
+	{
+		"id": "shop-statusbadge--invalid-value",
+		"theme": "light",
+		"violations": []
+	},
+	{
+		"id": "shop-addtocartbutton--small",
+		"theme": "dark",
+		"violations": []
+	},
+	{
+		"id": "shop-addtocartbutton--large-full-width",
+		"theme": "dark",
+		"violations": []
+	},
+	{
+		"id": "shop-cartinteractive--full-cart",
+		"theme": "dark",
+		"violations": []
+	},
+	{
+		"id": "shop-cartinteractive--with-promo",
+		"theme": "dark",
+		"violations": []
+	},
+	{
+		"id": "shop-cartinteractive--empty",
+		"theme": "dark",
+		"violations": []
+	},
+	{
+		"id": "shop-checkoutform--empty-guest-form",
+		"theme": "dark",
+		"violations": []
+	},
+	{
+		"id": "shop-checkoutform--prefilled-from-session",
+		"theme": "dark",
+		"violations": []
+	},
+	{
+		"id": "shop-checkoutform--online-available",
+		"theme": "dark",
+		"violations": []
+	},
+	{
+		"id": "shop-checkoutform--online-hidden",
+		"theme": "dark",
+		"violations": []
+	},
+	{
+		"id": "shop-copylinkbutton--default",
+		"theme": "dark",
+		"violations": []
+	},
+	{
+		"id": "shop-copylinkbutton--with-margin",
+		"theme": "dark",
+		"violations": []
+	},
+	{
+		"id": "shop-counter--default",
+		"theme": "dark",
+		"violations": []
+	},
+	{
+		"id": "shop-counter--at-min",
+		"theme": "dark",
+		"violations": []
+	},
+	{
+		"id": "shop-counter--at-max",
+		"theme": "dark",
+		"violations": []
+	},
+	{
+		"id": "shop-counter--small",
+		"theme": "dark",
+		"violations": []
+	},
+	{
+		"id": "shop-counter--announce-value",
+		"theme": "dark",
+		"violations": []
+	},
+	{
+		"id": "shop-menunav--five-categories",
+		"theme": "dark",
+		"violations": []
+	},
+	{
+		"id": "shop-ordertotals--no-discount",
+		"theme": "dark",
+		"violations": []
+	},
+	{
+		"id": "shop-ordertotals--with-discount",
+		"theme": "dark",
+		"violations": []
+	},
+	{
+		"id": "shop-ordertotals--pickup",
+		"theme": "dark",
+		"violations": []
+	},
+	{
+		"id": "shop-ordertotals--fixed-discount",
+		"theme": "dark",
+		"violations": []
+	},
+	{
+		"id": "shop-ordertracker--created-on-receipt",
+		"theme": "dark",
+		"violations": []
+	},
+	{
+		"id": "shop-ordertracker--unpaid-online",
+		"theme": "dark",
+		"violations": []
+	},
+	{
+		"id": "shop-ordertracker--paid-online",
+		"theme": "dark",
+		"violations": []
+	},
+	{
+		"id": "shop-ordertracker--in-delivery",
+		"theme": "dark",
+		"violations": []
+	},
+	{
+		"id": "shop-ordertracker--delivered",
+		"theme": "dark",
+		"violations": []
+	},
+	{
+		"id": "shop-ordertracker--cancelled-by-customer",
+		"theme": "dark",
+		"violations": []
+	},
+	{
+		"id": "shop-priceline--plain",
+		"theme": "dark",
+		"violations": []
+	},
+	{
+		"id": "shop-priceline--with-old-price",
+		"theme": "dark",
+		"violations": []
+	},
+	{
+		"id": "shop-priceline--large",
+		"theme": "dark",
+		"violations": []
+	},
+	{
+		"id": "shop-priceline--no-saving",
+		"theme": "dark",
+		"violations": []
+	},
+	{
+		"id": "shop-productcard--single-product",
+		"theme": "dark",
+		"violations": []
+	},
+	{
+		"id": "shop-productcard--set-with-components",
+		"theme": "dark",
+		"violations": []
+	},
+	{
 		"id": "shop-promoblock--available",
 		"theme": "dark",
 		"violations": []
@@ -46,6 +441,71 @@
 	},
 	{
 		"id": "shop-promoblock--stale-promo",
+		"theme": "dark",
+		"violations": []
+	},
+	{
+		"id": "shop-promocard--percent-with-code",
+		"theme": "dark",
+		"violations": []
+	},
+	{
+		"id": "shop-promocard--fixed-no-code",
+		"theme": "dark",
+		"violations": []
+	},
+	{
+		"id": "shop-promocard--unlimited",
+		"theme": "dark",
+		"violations": []
+	},
+	{
+		"id": "shop-statusbadge--created",
+		"theme": "dark",
+		"violations": []
+	},
+	{
+		"id": "shop-statusbadge--preparing",
+		"theme": "dark",
+		"violations": []
+	},
+	{
+		"id": "shop-statusbadge--ready",
+		"theme": "dark",
+		"violations": []
+	},
+	{
+		"id": "shop-statusbadge--in-delivery",
+		"theme": "dark",
+		"violations": []
+	},
+	{
+		"id": "shop-statusbadge--delivered",
+		"theme": "dark",
+		"violations": []
+	},
+	{
+		"id": "shop-statusbadge--picked-up",
+		"theme": "dark",
+		"violations": []
+	},
+	{
+		"id": "shop-statusbadge--cancelled-by-customer",
+		"theme": "dark",
+		"violations": []
+	},
+	{
+		"id": "shop-statusbadge--cancelled-by-vendor",
+		"theme": "dark",
+		"violations": []
+	},
+	{
+		"id": "shop-statusbadge--cancelled-by-timeout",
+		"theme": "dark",
+		"violations": []
+	},
+	{
+		"id": "shop-statusbadge--invalid-value",
 		"theme": "dark",
 		"violations": []
 	}
