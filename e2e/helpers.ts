@@ -21,6 +21,11 @@ export function randomPhone(): string {
 	return `+7 900 ${s.slice(0, 3)}-${s.slice(3, 5)}-${s.slice(5, 7)}`
 }
 
+/** Уникальный email на ран (Mailpit-фильтр по To) */
+export function randomEmail(): string {
+	return `e2e-${Date.now()}-${Math.floor(Math.random() * 1000)}@food.local`
+}
+
 /**
  * API-логин по телефону → куки сессии для storageState браузер-контекста.
  * SMS не уходит в провайдера — заглушка (код фиксированный, §5.15).
