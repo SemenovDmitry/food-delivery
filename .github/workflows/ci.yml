@@ -20,6 +20,9 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint # biome
+      # Типы маршрутов Next (PageProps, next-env.d.ts) генерятся в .next/types —
+      # в git их нет, без typegen tsc падает на страницах (найдено в CI, не локально)
+      - run: pnpm exec next typegen
       - run: pnpm exec tsc --noEmit
       - run: pnpm exec tsc -p ws-gateway --noEmit
       - run: pnpm test:unit
