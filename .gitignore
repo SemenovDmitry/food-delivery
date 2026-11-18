@@ -161,3 +161,6 @@ backups/
 # Playwright (этап 12): HTML-отчёт и трейсы/скриншоты падений
 playwright-report/
 test-results/
+
+# Storybook prod-сборка (pnpm build-storybook)
+storybook-static/

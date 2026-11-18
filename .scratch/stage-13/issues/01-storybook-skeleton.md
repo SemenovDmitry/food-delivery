@@ -4,9 +4,16 @@
 
 **Blocked by:** — (этап запускается после этапа 12)
 
-**Status:** open
+**Status:** resolved
 
-- [ ] dev-deps + скрипты `storybook`/`build-storybook`
-- [ ] `.storybook/main.ts` (framework nextjs-vite, stories glob, viteFinal + Tailwind)
-- [ ] `.storybook/preview.ts` (globals.css, ThemeProvider-декоратор + theme-toolbar light/dark)
-- [ ] `pnpm storybook` поднимается; `pnpm build-storybook` зелёный; next/lint/tsc не сломаны
+- [x] dev-deps + скрипты `storybook`/`build-storybook`
+- [x] `.storybook/main.ts` (framework nextjs-vite, stories glob, viteFinal + Tailwind)
+- [x] `.storybook/preview.tsx` (globals.css, ThemeProvider-декоратор + theme-toolbar light/dark)
+- [x] `pnpm build-storybook` зелёный (manager + preview + Tailwind-плагин скомпилировались); lint/tsc не сломаны
+
+## Comments
+
+- 2026-11-19 (реализация): **`@storybook/addon-essentials` discontinued с SB 9** (последняя версия 8.6.14) — подключение к storybook@10 даёт exports-мисматч (`Icons` из addon-toolbars@8 против ядра 10, `SB_CORE-SERVER_0004 NoMatchingExportError`); controls/toolbars/viewport/measure/outline входят в ядро storybook@10, аддон не нужен — в main.ts только `@storybook/addon-a11y@10`.
+- Шрифт: Geist подкладывается layout'ом через next/font (`--font-sans`, layout.tsx:8) — в стори-iframe его нет; `fontDecorator` ставит системный фолбэк на documentElement.
+- Тема: `themeDecorator` — ThemeProvider с `forcedTheme` из toolbar-глобала `theme` (light/dark), `@custom-variant dark` в globals.css подхватывает класс на html iframe.
+- `.gitignore` += `storybook-static/`.
