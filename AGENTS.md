@@ -220,6 +220,22 @@ Next.js 16.4.6 (App Router, Turbopack, Cache Components, Partial Prefetching, Re
 - [x] Entrypoint (Q11): `scripts/migrate.mjs` (retry ×3, идемпотентно, fail-fast без фолбэка) → CMD migrate&&exec server.js; `serverExternalPackages += ['drizzle-orm','postgres']` + ручной root-симлинк в Dockerfile с проверкой резолва на build — **§5.38**; `scripts/backup-db.sh` (pg_dump plain+gzip, `backups/` в .gitignore) + README «Бэкап/восстановление»; dev-поток не меняется
 - **Готово, когда — приёмка 2026-11-18**: полный цикл зелёный; throwaway fresh-migrate (7 миграций/20 таблиц, idempotent-restart молча, общие volume'ы целы); env-typo через docker run (exit 1: 8 полей списком; banana → NaN); restore-тест (0 ошибок, products=25/users=5/orders=21); prod healthy ×4, health 200↔503 + warn + error_events(requestId), 4 заголовка + X-Request-Id, JSON-логи (`advance:false`), возврат dev. Находки: §5.38 (standalone/external/симлинк), Edge-бандл instrumentation (NEXT_RUNTIME-гвард, никаких статических импортов node-only модулей), health на fresh-volume 503 до seed (бакет создаёт сидер — в README)
 
+### Этап 12 — Тесты (vitest + Playwright) + CI (GitHub Actions) — ПЛАН ЗАФИКСИРОВАН ГРИЛЛИНГОМ 2026-11-18 (Q1–Q17), реализация не начата (спека+5 тикетов — `.scratch/stage-12/`)
+
+- [ ] Юниты (тикет 01): vitest, `*.test.ts` ко-локация в `src/lib/` — promo/cart-totals/order-timeline/phone/format/payments-hmac/id; `ws-protocol` исключён (type-only, находка гриллинга); скрипт `test:unit`; pre-commit НЕ меняется (Q6 — тесты руками)
+- [ ] Playwright-инфра + P1 смоук (тикет 02): `@playwright/test` (не vitest browser mode), chromium-only, `workers: 1`; node-оркестратор `scripts/e2e-run.mjs` (Windows: cmd не понимает `VAR=x cmd`) = e2e-БД-setup → `next build` (DATABASE_URL=e2e, `NEXT_PUBLIC_WS_URL=ws://localhost:3001` пекётся, DEMO_AUTO_STATUS=false) → `playwright test`; webServer-массив app (`next start`, strict-env секреты в env-блоке) + gateway (`tsx`, :3001); P1 — главная/корзина/чекаут гостя/квитанция
+- [ ] e2e P2 ядро (тикет 03): вход демо-клиента UI (OTP 1111), админ-статус → трекинг ≤ 35 с без перезагрузки (Q5 — прод-код 25 с не трогаем, env-шов только если сьют медленный), SHAWARMA20 скоуп −120₽, SECRET15 скрыт но применяется, отмена клиентом alertdialog
+- [ ] e2e P3 сложные (тикет 04): онлайн-оплата loopback → чип «Оплачено», регистрация рандомного телефона + привязка email (код из Mailpit API :8025), чат гость↔оператор реальный WS два контекста (fixme-эскейп допустим, Q11)
+- [ ] CI (тикет 05, Q9): `.github/workflows/ci.yml` — `push: master` + `workflow_dispatch`, джобы unit (~1–2 мин) + e2e (~5–8 мин, dev-compose на раннере, артефакт-отчёт при падении); **правка конвенции §1** («без CI» → GitHub Actions); приёмка полный цикл + **пуш master по явному разрешению Q15** (~30 накопленных коммитов) → Actions зелёный
+- [ ] БД e2e (Q17): отдельная `food_delivery_e2e` в том же postgres-контейнере, идемпотентный setup (createdb→migrate→seed); изоляция — рандомные телефоны на ран; dev-БД не замусоривается
+
+### Этап 13 — Storybook — ПЛАН ЗАФИКСИРОВАН (тот же гриллинг), реализация после этапа 12 (спека+4 тикета — `.scratch/stage-13/`)
+
+- [ ] Скелет (тикет 01, Q7): Storybook 10 + `@storybook/nextjs-vite` (единственный актуальный для Next 16; webpack — legacy), Tailwind v4 через `@tailwindcss/vite`; addons a11y (axe) + theme-toolbar light/dark (next-themes-декоратор); риск next/font → фолбэк в preview
+- [ ] Слайс 1 (тикет 02, Q8): презентационные — counter, status-badge (все 9 статусов × обе темы), price-line, order-totals, promo-card, product-card (мок-пропы), menu-nav, footer, copy-link-button, add-to-cart-button
+- [ ] Слайс 2 (тикет 03, Q13): интерактивные с моками — cart-interactive/promo-block (мок-action'ы колбэками, инъекция с дефолтом = текущее поведение), checkout-form (инъекция onSubmit), order-tracker (мок fetch); **support-chat вне скоупа** (мок WS дорог — живой путь покрыт чат-e2e этапа 12)
+- [ ] Приёмка + доки (тикет 04): стори живьём обе темы, `build-storybook`, полный цикл проекта; ко-локация `*.stories.tsx` (Q12); визуальные снапшоты отложены до редизайна (Q14)
+
 ## 7. A11y-чек-лист (на каждый модуль)
 
 - Landmarks, один h1, skip-link (в layout)
