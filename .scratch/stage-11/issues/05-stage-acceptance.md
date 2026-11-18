@@ -11,15 +11,19 @@
 
 **Blocked by:** 01, 02, 03, 04
 
-**Status:** open
+**Status:** resolved
 
-- [ ] Полный цикл сборки зелёный (lint / tsc×2 / build / docker build)
-- [ ] Fresh-migrate на throwaway `-p stage11check`: entrypoint применил миграции на пустом volume, health 200, общие volume'ы целы; down -v
-- [ ] Env-typo (docker run): без секретов → exit(1) с читаемым списком; `PAYMENT_WINDOW_MINUTES=banana` → exit(1)
-- [ ] Restore-тест: бэкап → throwaway-postgres → counts верны; контейнер снесён
-- [ ] Prod: healthy ×4, health 200/503-деградация + warn + error_events(requestId), заголовки + X-Request-Id, JSON-логи, idempotent-restart миграций
-- [ ] Возврат dev; скриншоты/логи в `.scratch/stage-11/screenshots/`; AGENTS §3/§6/§8; коммит этапа
+- [x] Полный цикл сборки зелёный (lint / tsc×2 / build / docker build)
+- [x] Fresh-migrate на throwaway `-p stage11check`: entrypoint применил миграции на пустом volume (`[migrate] миграции применены`, `drizzle.__drizzle_migrations`=7, tables=20), общие volume'ы целы; idempotent-restart — миграции молча; down -v
+- [x] Env-typo (docker run): без секретов → exit(1) с читаемым списком 8 полей; `PAYMENT_WINDOW_MINUTES=banana` → exit(1) `expected number, received NaN`
+- [x] Restore-тест: бэкап (20K) → throwaway-postgres → 0 ошибок импорта → counts верны (products=25=24+тест-сет этапа 7, users=5, orders=21 — живые dev-данные); контейнер снесён
+- [x] Prod: healthy ×4 (minio curl→wget фолбэк сработал на bitnamilegacy), health 200 / 503-деградация (`Request aborted`) + warn + error_events(requestId b4752957…), 4 заголовка + X-Request-Id, JSON-логи (`advance:false` — prod off — канон этапа 10), idempotent-restart миграций
+- [x] Возврат dev (prod app/gateway остановлены — осиротели без своего postgres); доказательства — `.scratch/stage-11/screenshots/acceptance-evidence.md`; AGENTS §3/§6/§8; коммит этапа
 
 ## Comments
 
--
+- 2026-11-18 (приёмка): **ГЛАВНАЯ ГРАБЛЯ ЭТАПА — file-tracing standalone (дополняет Q11/§5.33-семью)**. Standalone бандлит все не-external пакеты в server-чанки: `/app/node_modules` содержит ТОЛЬКО external-пакеты — drizzle-orm/postgres там НЕ БЫЛО → `migrate.mjs` падал ERR_MODULE_NOT_FOUND; force-trace через instrumentation не спасает (nft скопировал `.pnpm`-store, но root-симлинк drizzle-orm не создал; postgres — создал). **Фикс**: `serverExternalPackages += ['drizzle-orm','postgres']` (external → попадают в node_modules) + ручной `ln -s .pnpm/drizzle-orm@*/node_modules/drizzle-orm` в Dockerfile (glob расширяется от CWD — только из `cd node_modules`!) + проверка резолва `node --input-type=module -e "await import('drizzle-orm/postgres-js/migrator')"` прямо на build (упадёт → образ не соберётся, вместо restart-loop контейнера).
+- §5.28 снова подтвердился: `up -d` без `--build` поднял старый образ compose — env-фикс «не сработал» до пересборки; правило — always `--build` после правок.
+- Health на fresh-volume честно 503 (`s3: UnknownError`): бакет `food-delivery` создаёт СИДЕР, не миграция — свежий деплой требует seed (задокументировано в README-restore); миграции health не проверяет — их провал = контейнер не стартует (migrate-fail-fast).
+- Порядок CMD `migrate → server` даёт слоёный fail-fast: migrate требует DATABASE_URL (exit 1 с своим сообщением), env-схема требует остальное — каждый слой роняет со своей читаемой ошибкой.
+- Минус-наблюдение: первый psql-запрос миграций обогнал entrypoint (relation not found, через секунду таблица с 7 строками); верифицировать миграции ПОСЛЕ Ready в логах, не сразу после `up`.

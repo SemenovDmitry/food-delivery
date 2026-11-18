@@ -20,8 +20,11 @@ const nextConfig: NextConfig = {
 	output: 'standalone',
 	// pino (этап 11): CJS с внутренними require (sonic-boom/thread-stream) —
 	// бандлер их калечит; ресолвить из node_modules в рантайме (standalone
-	// находит их через file-tracing)
-	serverExternalPackages: ['pino', 'pino-pretty'],
+	// находит их через file-tracing). drizzle-orm + postgres — то же ради
+	// scripts/migrate.mjs: standalone бандлит все не-external пакеты в чанки
+	// (node_modules их НЕ содержит), а entrypoint-мигратор требует их из
+	// plain node — иначе ERR_MODULE_NOT_FOUND на старте контейнера (тикет 05)
+	serverExternalPackages: ['pino', 'pino-pretty', 'drizzle-orm', 'postgres'],
 	images: {
 		remotePatterns: [
 			{ protocol: s3Endpoint.startsWith('https') ? 'https' : 'http', hostname: s3Hostname },

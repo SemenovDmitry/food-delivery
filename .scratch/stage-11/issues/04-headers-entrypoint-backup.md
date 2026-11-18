@@ -17,3 +17,4 @@
 ## Comments
 
 - 2026-11-18 (реализация): force-trace + Edge-гвард соседствуют в register — динамический импорт мигратора выполняется только в Node-ветке (Edge-бандл его не тянет).
+- Приёмка 05 уточнила механику (см. тикет 05): force-trace НЕДОСТАТОЧЕН — standalone бандлит не-external пакеты, `drizzle-orm`/`postgres` нужны в `serverExternalPackages` + ручной root-симлинк drizzle-orm в Dockerfile (nft копирует .pnpm-store без симлинка). Проверка резолва встроена в RUN.

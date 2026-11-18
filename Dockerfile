@@ -34,10 +34,17 @@ COPY --from=build /app/public ./public
 COPY --from=build --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=build --chown=nextjs:nodejs /app/.next/static ./.next/static
 # Entrypoint с миграциями (этап 11, Q11): drizzle/ (SQL-файлы) + migrate-скрипт.
-# migrator попадает в standalone node_modules через force-trace в
-# instrumentation.ts (file-tracing не видит .mjs-динамику — тикет 04)
+# drizzle-orm + postgres — в serverExternalPackages (бандлер инлайнит их в чанки,
+# где их не видит plain node); file-tracing кладёт .pnpm-store, но root-симлинк
+# drizzle-orm не создаёт (postgres создаёт) — линкуем вручную и проверяем
+# резолв прямо на сборке, иначе контейнер уходит в restart-loop на migrate.mjs
 COPY --from=build /app/drizzle ./drizzle
 COPY --from=build /app/scripts/migrate.mjs ./scripts/migrate.mjs
+# glob расширяется от CWD — линкуем из node_modules/, проверка резолва на сборке
+RUN cd node_modules \
+	&& ln -s .pnpm/drizzle-orm@*/node_modules/drizzle-orm drizzle-orm \
+	&& cd .. \
+	&& node --input-type=module -e "await import('drizzle-orm/postgres-js/migrator'); console.log('drizzle-orm: resolve ok')"
 USER nextjs
 EXPOSE 3000
 ENV PORT=3000 HOSTNAME=0.0.0.0
