@@ -4,10 +4,18 @@
 
 **Blocked by:** 01
 
-**Status:** open
+**Status:** resolved
 
-- [ ] `@playwright/test` + chromium; скрипты `test:e2e`; `scripts/e2e-run.mjs` + `scripts/e2e-db-setup.mjs`
-- [ ] `playwright.config.ts`: workers 1, chromium-only, webServer-массив app+gateway (env-блоки strict-runtime), reuseExistingServer
-- [ ] `e2e/helpers.ts`: adminContext (API-логин), randomPhone
-- [ ] `e2e/p1-smoke.spec.ts`: главная / корзина / чекаут гостя / квитанция+трекинг / корзина очищена
-- [ ] `pnpm test:e2e` зелёный локально против dev-compose (e2e-БД `food_delivery_e2e` создана, dev-БД не тронута)
+- [x] `@playwright/test` + chromium; скрипты `test:e2e`; `scripts/e2e-run.mjs` + `scripts/e2e-db-setup.mjs`
+- [x] `playwright.config.ts`: workers 1, chromium-only, webServer-массив app+gateway (env-блоки strict-runtime), reuseExistingServer
+- [x] `e2e/helpers.ts`: phoneSessionCookies (API-логин better-auth send-otp+verify), randomPhone
+- [x] `e2e/p1-smoke.spec.ts`: главная / корзина / чекаут гостя / квитанция+трекинг / корзина очищена
+- [x] `pnpm test:e2e` зелёный — **3/3 за 9.5 с** (полный пайплайн с build ~2.5 мин); e2e-БД `food_delivery_e2e` создана оркестратором
+
+## Comments
+
+- 2026-11-18 (реализация): **главная находка — §5.39**: Next 16 держит предыдущие деревья маршрутов в DOM скрытыми (Activity-ресторация при back-навигации) — `getByText` ловит скрытые `/cart`/`/checkout` (strict-violation на 3 элемента, с `exact: true` — «hidden» на видимой странице); правило «текстовые ассерты — только role-локаторы» задокументировано в AGENTS §5.39, оба падения прогонов были об этом.
+- Изоляция БД верифицирована psql: dev 21 заказ (не тронут, канон этапа 11), e2e — 3 заказа/3 юзера (прогоны + сидер).
+- `spawnSync(..., { shell: true })` даёт DeprecationWarning DEP0190 — косметика: pnpm на Windows без shell не стартует; вывод stdio inherit.
+- Веб-серверы в конфиге ждут «строковый» env — хелпер `envOf` фильтрует undefined из process.env (тип ProcessEnv string|undefined vs Playwright Record<string,string>).
+- `.gitignore` += `playwright-report/`, `test-results/`.

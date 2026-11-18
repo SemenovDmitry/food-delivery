@@ -157,3 +157,7 @@ next-env.d.ts
 
 # Бэкапы pg_dump (scripts/backup-db.sh, этап 11)
 backups/
+
+# Playwright (этап 12): HTML-отчёт и трейсы/скриншоты падений
+playwright-report/
+test-results/
