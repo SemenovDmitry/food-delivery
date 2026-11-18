@@ -1,12 +1,5 @@
 import { expect, type Page, test } from '@playwright/test'
-import {
-	createGuestOrder,
-	DEMO,
-	menuCard,
-	phoneSessionCookies,
-	randomEmail,
-	randomPhone,
-} from './helpers'
+import { DEMO, menuCard, phoneSessionCookies, randomEmail, randomPhone } from './helpers'
 
 /**
  * P3 сложные интеграции (этап 12, тикет 04, Q10): онлайн-оплата loopback,
