@@ -5,6 +5,7 @@ import { WebSocketServer } from 'ws'
 
 import { authenticate, isAllowedOrigin } from './auth.js'
 import { env } from './env.js'
+import { logger } from './logger.js'
 import type {
 	ChatClientMessage,
 	ChatInternalRequest,
@@ -28,8 +29,14 @@ const PING_INTERVAL_MS = 30_000
 
 const wss = new WebSocketServer({ noServer: true })
 
-// Обычный HTTP на :3001 — только 426; WS живёт на upgrade (§5.22)
-const httpServer = createServer((_request, response) => {
+// Обычный HTTP на :3001 — /health для compose-healthcheck (этап 11, Q5-в) и
+// 426 на всё остальное; WS живёт на upgrade (§5.22)
+const httpServer = createServer((request, response) => {
+	if (request.url === '/health') {
+		response.writeHead(200, { 'content-type': 'text/plain; charset=utf-8' })
+		response.end('ok')
+		return
+	}
 	response.writeHead(426, { 'content-type': 'text/plain; charset=utf-8' })
 	response.end('Upgrade Required')
 })
@@ -43,14 +50,15 @@ httpServer.on('upgrade', async (request, socket, head) => {
 	const identity = await authenticate(request.headers.cookie ?? '')
 	if (!identity) {
 		// «WS-upgrade без идентичности отклонён» — приёмочный критерий этапа 6
-		console.log('[ws-gateway] upgrade отклонён: нет идентичности')
+		logger.info('upgrade отклонён: нет идентичности')
 		socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n')
 		socket.destroy()
 		return
 	}
 	wss.handleUpgrade(request, socket, head, (ws) => {
-		console.log(
-			`[ws-gateway] upgrade ok: ${identity.kind}${identity.kind === 'guest' ? '' : ` ${identity.userId}`}`,
+		logger.info(
+			{ kind: identity.kind, userId: identity.kind === 'guest' ? null : identity.userId },
+			'upgrade ok',
 		)
 		const connection: GatewayConnection = {
 			ws,
@@ -69,11 +77,11 @@ function wireConnection(connection: GatewayConnection): void {
 		connection.alive = true
 	})
 	connection.ws.on('close', () => {
-		console.log(`[ws-gateway] close: ${connection.identity.kind} отключился`)
+		logger.info({ kind: connection.identity.kind }, 'close: отключился')
 		removeConnection(connection)
 	})
 	connection.ws.on('error', (error) => {
-		console.error('[ws-gateway] соединение упало:', error)
+		logger.error({ err: error }, 'соединение упало')
 	})
 	connection.ws.on('message', (raw) => {
 		void handleClientMessage(connection, raw.toString())
@@ -168,14 +176,17 @@ await sql.listen('chat', (payload) => {
 		broadcastToThread(parsed.threadId, message)
 		broadcastToOperators(message)
 	} catch (error) {
-		console.error('[ws-gateway] битый NOTIFY payload:', error)
+		logger.error({ err: error }, 'битый NOTIFY payload')
 	}
 })
 
 const sweeper = sweepConnections(PING_INTERVAL_MS)
 
 httpServer.listen(env.PORT, () => {
-	console.log(`[ws-gateway] слушает :${env.PORT} (internal: ${env.NEXT_INTERNAL_URL})`)
+	logger.info(
+		{ port: env.PORT, internal: env.NEXT_INTERNAL_URL },
+		`шлюз слушает :${env.PORT} (internal: ${env.NEXT_INTERNAL_URL})`,
+	)
 })
 
 function shutdown(): void {

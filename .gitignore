@@ -154,3 +154,6 @@ next-env.d.ts
 .DS_Store
 *.pem
 .zcode/plans/
+
+# Бэкапы pg_dump (scripts/backup-db.sh, этап 11)
+backups/

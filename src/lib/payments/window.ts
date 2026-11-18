@@ -1,12 +1,14 @@
+import { env } from '@/lib/env'
+
 /**
  * Окно оплаты онлайн-заказа (этап 9, Q17/Q13): минуты от orders.createdAt;
- * просрочка → cancelled_by_timeout. Чтение env по образцу email.ts (zod-env —
- * этап 11): кривое значение → дефолт 5. Отдельный файл: ядро webhook-core
- * импортирует функцию без циркулярной зависимости с фабрикой index.ts.
+ * просрочка → cancelled_by_timeout. Значение — из env-схемы (этап 11, Q3):
+ * кривое/вне границ 1..60 → падение на старте (было: молчаливый дефолт 5).
+ * Отдельный файл: ядро webhook-core импортирует функцию без циркулярной
+ * зависимости с фабрикой index.ts.
  */
 export function paymentWindowMinutes(): number {
-	const raw = Number(process.env.PAYMENT_WINDOW_MINUTES)
-	return Number.isFinite(raw) && raw > 0 ? raw : 5
+	return env.PAYMENT_WINDOW_MINUTES
 }
 
 /**

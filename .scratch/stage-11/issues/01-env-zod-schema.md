@@ -1,0 +1,21 @@
+# 01: lib/env.ts — zod-схема (lenient/strict, tiers) + миграция серверных читателей
+
+**What to build:** `src/lib/env.ts` — единственный серверный источник env (образец — `ws-gateway/src/env.ts`, но с build-гвардом). Режимы: `process.env.NEXT_PHASE === 'phase-production-build'` → **lenient** (все поля опциональны с текущими фолбэк-цепочками: `AUTH_SECRET ?? AUTH_SECRET_BUILD_FALLBACK`, `S3_ENDPOINT ?? S3_ENDPOINT_BUILD_FALLBACK`, `DATABASE_URL ?? postgresql://postgres:postgres@localhost:5560/food_delivery`, `BETTER_AUTH_URL ?? http://localhost:3000`); иначе — **strict**: `safeParse(process.env)`, при ошибке — читаемый список (`path: message`, склейка `'; '`) в `console.error` + `process.exit(1)`. **Tiers (Q2/Q3)**: prod-required при `NODE_ENV=production` без дефолта — `DATABASE_URL`, `AUTH_SECRET`, `INTERNAL_API_SECRET`, `PAYMENTS_WEBHOOK_SECRET`, `S3_ENDPOINT/KEY/SECRET/BUCKET`, `BETTER_AUTH_URL` (два контура схемы: strict-prod и lenient/dev, dev — дефолты + разрешены пустые секреты); опциональные с coercion и ЖЁСТКИМИ границами (нарушение = падение, не молчаливый кламп) — `SMTP_HOST` (пусто ок), `SMTP_PORT` coerce-int 1..65535 дефолт 1025, `DEMO_SMS_OTP_CODE` дефолт `1111`, `DEMO_AUTO_STATUS` coerce-boolean дефолт true, `DEMO_AUTO_STATUS_INTERVAL` coerce-int ≥5000 дефолт 60000, `DEMO_AUTO_CANCEL_RATE` coerce-number 0..1 дефолт 0.1, `PAYMENT_PROVIDER` дефолт `mock`, `PAYMENT_WINDOW_MINUTES` coerce-int 1..60 дефолт 5, `LOG_LEVEL` enum `trace|debug|info|warn|error|fatal` дефолт `info`. `NEXT_PUBLIC_WS_URL` **вне схемы** — остаётся прямым `process.env` в клиентских `support-chat.tsx`/`chat-console.tsx` (инлайн на build, §5.32-г). Конвенция комментарием: `env.ts` не импортировать из клиентских файлов; `server-only`-маркер НЕ ставить (seed импортирует s3.ts через tsx). **Миграция читателей** (~11 серверных файлов): `db/index.ts`, `lib/s3.ts`, `lib/auth.ts`, `lib/email.ts`, `lib/jobs/auto-status.ts` (ручные клампы/парсы удалить — теперь в схеме), `lib/payments/{mock.ts,window.ts,index.ts}` (ручной парс окна удалить), `src/instrumentation.ts` (импортирует env ПЕРВЫМ — fail-fast при старте), `app/api/chat/internal/route.ts`, `app/api/payments/mock/confirm/route.ts`. Экспорт — `export const env: z.infer<typeof schema>`. Env-файлы: `.env.example` += `LOG_LEVEL=info` и `BETTER_AUTH_URL=http://localhost:3000` (догнать §5.32-а) с комментами tiers; локальный `.env` += `LOG_LEVEL=info`.
+
+**Blocked by:** —
+
+**Status:** resolved
+
+- [x] `lib/env.ts`: NEXT_PHASE-гвард (build → lenient, без throw), strict + exit(1) с читаемым списком, tiers, coercion с жёсткими границами
+- [x] Серверные читатели мигрированы на `env` (ручные клампы `auto-status.ts`/`window.ts` удалены); клиентские `NEXT_PUBLIC_*` файлы НЕ тронуты
+- [x] Fail-fast при старте: env парсится транзитивно при загрузке instrumentation (db → env) ДО старта фоновых циклов; добавлен гвард `NEXT_RUNTIME === 'nodejs'` (доки instrumentation — Edge-бандл register затягивал env/logger; найдено на смоуке, Comment 3)
+- [x] `.env.example` += `LOG_LEVEL`, `BETTER_AUTH_URL`; локальный `.env` += `LOG_LEVEL`
+- [x] `pnpm build` проходит (NEXT_PHASE-lenient: секретов на сборке нет — build не сломан)
+- [x] Смоук lenient/dev: dev-сервер поднялся с локальным `.env` (неполные секреты — фолбэки, без падения); strict-контур — на приёмке (тикет 05, docker run)
+- [x] lint + `tsc --noEmit` зелёные
+
+## Comments
+
+- 2026-11-18 (реализация): **поправка к тексту тикета** — `DEMO_AUTO_STATUS` дефолт **false** (не true): prod-compose флаг не задаёт, дефолт true включил бы продвижение заказов в prod (ломает канон этапа 10 «prod off»); `.env.example` держит `true` для dev — суммарное поведение всех сред не изменилось.
+- better-auth предупреждал в dev «Base URL is not set» → в `betterAuth()` явно передан `baseURL: env.BETTER_AUTH_URL` — переменная теперь реально потребляется кодом (а не только валидируется схемой), warn ушёл (0 после HMR).
+- Edge-находка смоука: Turbopack компилирует instrumentation и для Edge-бандла — цепочка `auto-status → env/logger` (`node:stream`, `process.exit`) сыпала «Ecmascript file had an error». Фикс — `if (NEXT_RUNTIME !== 'nodejs') return` первым делом в register (канон доков); в НОВОМ процессе 0 предупреждений.

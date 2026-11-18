@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { env } from '@/lib/env'
 import { verifyHmac, WEBHOOK_SIGNATURE_HEADER } from './hmac'
 import type { InitiateInput, InitiateResult, PaymentProvider, WebhookEvent } from './types'
 
@@ -8,6 +9,7 @@ import type { InitiateInput, InitiateResult, PaymentProvider, WebhookEvent } fro
  * нашу страницу «сайта провайдера» ((provider)/orders/[id]/pay), где подпись
  * ставит сервер (confirm-эндпоинт, Q1-Б). verifyWebhook — честная проверка
  * HMAC: этим же кодом когда-нибудь примет звонок реального провайдера.
+ * Секрет — из env-схемы (этап 11): строка гарантирована и lenient-фолбэком.
  */
 export class MockProvider implements PaymentProvider {
 	async initiate(input: InitiateInput): Promise<InitiateResult> {
@@ -18,10 +20,8 @@ export class MockProvider implements PaymentProvider {
 	}
 
 	async verifyWebhook(headers: Headers, rawBody: string): Promise<WebhookEvent | null> {
-		const secret = process.env.PAYMENTS_WEBHOOK_SECRET
-		if (!secret) return null
 		const signature = headers.get(WEBHOOK_SIGNATURE_HEADER)
-		if (!signature || !verifyHmac(rawBody, secret, signature)) return null
+		if (!signature || !verifyHmac(rawBody, env.PAYMENTS_WEBHOOK_SECRET, signature)) return null
 
 		try {
 			const parsed: unknown = JSON.parse(rawBody)

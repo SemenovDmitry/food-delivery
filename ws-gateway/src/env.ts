@@ -17,6 +17,8 @@ const envSchema = z.object({
 	INTERNAL_API_SECRET: z.string().min(1),
 	/** Origin'ы браузера через запятую (prod: http://localhost:3000 или домен за TLS) */
 	WS_ALLOWED_ORIGINS: z.string().min(1).default('http://localhost:3000'),
+	/** Уровень структурных логов pino (этап 11, Q9); дефолт info — как в app */
+	LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal']).default('info'),
 })
 
 const parsed = envSchema.safeParse(process.env)

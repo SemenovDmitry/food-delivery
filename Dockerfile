@@ -33,7 +33,17 @@ RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001
 COPY --from=build /app/public ./public
 COPY --from=build --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=build --chown=nextjs:nodejs /app/.next/static ./.next/static
+# Entrypoint с миграциями (этап 11, Q11): drizzle/ (SQL-файлы) + migrate-скрипт.
+# migrator попадает в standalone node_modules через force-trace в
+# instrumentation.ts (file-tracing не видит .mjs-динамику — тикет 04)
+COPY --from=build /app/drizzle ./drizzle
+COPY --from=build /app/scripts/migrate.mjs ./scripts/migrate.mjs
 USER nextjs
 EXPOSE 3000
 ENV PORT=3000 HOSTNAME=0.0.0.0
-CMD ["node", "server.js"]
+# Healthcheck (этап 11, Q5-а): busybox wget (curl в alpine нет); 503 от
+# /api/health = фейл = unhealthy. start-period покрывает migrate + старт сервера
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+	CMD wget -q --spider http://127.0.0.1:3000/api/health || exit 1
+# Миграции до сервера: упали → процесс умер → restart: unless-stopped повторит
+CMD ["sh", "-c", "node scripts/migrate.mjs && exec node server.js"]

@@ -1,7 +1,10 @@
 import { asc, eq } from 'drizzle-orm'
 import { db } from '@/db'
 import { notifications } from '@/db/schema'
+import { logger } from '@/lib/logger'
 import { getChannelProvider, type NotificationPayload } from '@/lib/notifications/providers'
+
+const log = logger.child({ component: 'flusher' })
 
 /**
  * Флушер аутбокса (этап 10, §5.16, Q7): setInterval-синглтон 30 с — стартует
@@ -39,7 +42,10 @@ export async function flushOnce(): Promise<{ sent: number; failed: number }> {
 			sent += 1
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error)
-			console.error(`[аутбокс] ${row.channel}/${row.event} ${row.id} → failed: ${message}`)
+			log.error(
+				{ err: error, notificationId: row.id, channel: row.channel, event: row.event },
+				`аутбокс: ${row.channel}/${row.event} → failed: ${message}`,
+			)
 			await db
 				.update(notifications)
 				.set({ status: 'failed', error: message, updatedAt: new Date() })
@@ -56,8 +62,8 @@ export function startFlusher(): void {
 	const g = globalThis as { __foodFlusherStarted?: boolean }
 	if (g.__foodFlusherStarted) return
 	g.__foodFlusherStarted = true
-	console.log('[аутбокс] флушер стартовал (интервал 30 с)')
+	log.info({ intervalMs: FLUSH_INTERVAL_MS, batchSize: BATCH_SIZE }, 'аутбокс: флушер стартовал')
 	setInterval(() => {
-		flushOnce().catch((error) => console.error('[аутбокс] тик флушера упал', error))
+		flushOnce().catch((error) => log.error({ err: error }, 'аутбокс: тик флушера упал'))
 	}, FLUSH_INTERVAL_MS).unref?.()
 }

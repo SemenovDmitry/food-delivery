@@ -1,4 +1,5 @@
 import { env } from './env.js'
+import { logger } from './logger.js'
 import type { ChatInternalRequest, ChatInternalResponse } from './protocol.js'
 
 export type InternalResult = {
@@ -24,7 +25,7 @@ export async function relayInternal(request: ChatInternalRequest): Promise<Inter
 		const body = (await response.json().catch(() => null)) as ChatInternalResponse | null
 		return { status: response.status, body }
 	} catch (error) {
-		console.error('[ws-gateway] релей недоступен:', error)
+		logger.error({ err: error }, 'релей недоступен')
 		return { status: 0, body: null }
 	}
 }

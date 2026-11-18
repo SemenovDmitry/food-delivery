@@ -1,4 +1,5 @@
 import { env } from './env.js'
+import { logger } from './logger.js'
 import type { ChatIdentity } from './protocol.js'
 
 const GUEST_TOKEN_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -54,7 +55,7 @@ export async function authenticate(cookieHeader: string): Promise<ChatIdentity |
 			}
 		}
 	} catch (error) {
-		console.error('[ws-gateway] get-session недоступен:', error)
+		logger.error({ err: error }, 'get-session недоступен')
 		return null
 	}
 

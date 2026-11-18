@@ -1,0 +1,24 @@
+# 02: pino — lib/logger.ts (sink error_events) + request-id в proxy + миграция console.* (app + ws-gateway)
+
+**What to build:** Deps: `pino` в root deps, `pino-pretty` в devDeps, `pino` в `ws-gateway/package.json`. **`src/lib/logger.ts`** (Q6/Q8): `pino({ level: env.LOG_LEVEL, base: { service: 'food-delivery', env: env.NODE_ENV } })`; **dev transport** — `pino-pretty` только при `NODE_ENV !== 'production'` (worker-threads под Turbopack хрупки — если упадёт на смоуке, решение «JSON везде» фиксируется в этом тикете, код потребителей не меняется); prod — голый JSON в stdout. **Sink error_events** (Q8): двухпоточный pino (multistream): stdout + DB-стрим с фильтром `level ≥ 40` (warn/error/fatal) → fire-and-forget INSERT в `error_events` (`level`, `message` = msg, `stack` из `err.stack` cap 8000 символов, `context` = `{ requestId, component, …остальные поля }`); `void insert().catch(() => {})` — сбой вставки никогда не логируется в error_events (цикла «DB лежит» нет); sink выключен при `NEXT_PHASE === 'phase-production-build'`. Чистки/ротации нет (Q13). **Request-id (Q7)**: `src/proxy.ts` — matcher расширяется с `/admin/:path*` на `['/((?!_next/static|_next/image|favicon\\.ico|robots\\.txt).*)']`; `crypto.randomUUID()` → `requestHeaders.set('x-request-id', id)` + `NextResponse.next({ request: { headers } })` c `response.headers.set('X-Request-Id', id)`; fast-fail /admin-логика сохраняется. Хелпер `getRequestId()` в `lib/` — `headers()` из `next/headers` в try/catch (вне request-скоупа → null); правило: ТОЛЬКО в некешируемых скоупах (Route Handlers, Actions, error-границы), в `'use cache'` не трогать (§5.3-дух). Access-логи НЕ делаем. **Миграция console.\*** (Q9): app ~20 сайтов → `logger`/`logger.child({ component: '…' })` — `lib/auth.ts` (SMS-заглушка), `lib/email.ts`, `lib/jobs/auto-status.ts`, `lib/notifications/{flusher,providers}.ts`, catch-блоки `api/chat/init`, `api/chat/internal`, `api/payments/mock/confirm` (+`getRequestId()` в context), `lib/actions/orders.ts` (createOrder initiate), старт-логи `instrumentation.ts` и `flusher.ts`; catch-блоки роутов — `logger.error({ err, requestId }, '…')`. НЕ трогаем: `db/seed.ts` (tsx-скрипт), клиентский `error.tsx`. **ws-gateway** — собственный `logger.ts` (JSON stdout, БЕЗ DB-sink), `LOG_LEVEL` добавляется в его `env.ts` (схема/fail-fast как есть), ~8 сайтов console мигрируют (`index.ts` upgrade/close/error-логи).
+
+**Blocked by:** 01
+
+**Status:** resolved
+
+- [x] `lib/logger.ts`: LOG_LEVEL, base {service, env}, dev pino-pretty / prod JSON, child-паттерн
+- [x] Sink: level ≥ 40 → error_events (stack cap 8000, context с requestId/component), fire-and-forget, NEXT_PHASE-гвард
+- [x] `proxy.ts`: request-id на всех динамических путях (request+response заголовки), /admin fast-fail сохранён
+- [x] `getRequestId()` — try/catch, правило «только некешируемые скоупы» задокументировано
+- [x] console.\* app мигрированы (seed.ts и error.tsx не тронуты); catch-блоки роутов кладут requestId
+- [x] ws-gateway: свой pino (без sink), LOG_LEVEL в его env.ts, console мигрирован (index/relay/rooms/auth — 11 сайтов)
+- [x] `pnpm dev` живьём: старт-логи через logger, health-деградация (stop minio) записала warn в error_events с requestId; `docker logs`-формат JSON верифицируется на приёмке
+- [x] lint + `tsc --noEmit` ×2 зелёные
+
+## Comments
+
+- 2026-11-18 (реализация): **pino 10.4.0 + pino-pretty 13.2.0** (peer-конфликтов нет); в next.config добавлен `serverExternalPackages: ['pino', 'pino-pretty']` — бандлер не трогает внутренние require pino (sonic-boom/thread-stream), standalone находит их через file-tracing.
+- **pretty — потоком В ПРОЦЕССЕ**, не worker-transport: вывод тот же, хрупкость transport под бандлеры обойдена по построению; фолбэк «JSON везде» не понадобился.
+- **Найдено на смоуке**: (1) fast-fail-редирект `/login` сработал на ВСЕХ путях (matcher стал глобальным, а редирект не был ограничен /admin) — гость получал 307 на `/` и `/api/health`; фикс — редирект только при `pathname` в /admin (гард `/admin` реверифицирован: 307 → /login, витрина 200). (2) Multistream пулировал pretty И raw JSON в dev — дубль каждой строки; fixed: pretty заменяет raw.
+- createOrder-сайт — осознанно `warn` (не error): handled-деградация, заказ жив, оплата позже через CTA.
+- Ревью-фиксы: migrate.mjs без молчаливого `:5560`-фолбэка (fail-fast, философия env-схемы); createOrder-warn получил `requestId` (`getRequestId()` доступен в Actions); inline `logger.child()` → модульные `log` (chat/init, confirm, orders); `IS_BUILD` экспортирован из env.ts (литерал NEXT_PHASE в одном месте); auto-status на `env.X` вместо деструктуризации. Осознанно НЕ чинено: статический `import pretty` кладёт pino-pretty в standalone prod-trace (динамический импорт потребовал бы TLA в logger.ts — сложность не окупают ~сотни КБ; serverExternalPackages и так выводит пакет из бандла).

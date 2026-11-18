@@ -5,6 +5,8 @@ import { db } from '@/db'
 import * as schema from '@/db/schema'
 import { notifications } from '@/db/schema'
 import { sendEmail } from '@/lib/email'
+import { env } from '@/lib/env'
+import { logger } from '@/lib/logger'
 import { tempEmailFor } from '@/lib/temp-email'
 
 /**
@@ -12,14 +14,18 @@ import { tempEmailFor } from '@/lib/temp-email'
  * better-auth генерирует свой код, но verifyOTP — кастомная проверка,
  * поэтому реальный код никогда не совпадает и в дело не идёт.
  */
-const DEMO_SMS_CODE = process.env.DEMO_SMS_OTP_CODE ?? '1111'
+const DEMO_SMS_CODE = env.DEMO_SMS_OTP_CODE
+
+const log = logger.child({ component: 'auth' })
 
 export const auth = betterAuth({
-	// AUTH_SECRET_BUILD_FALLBACK задаётся ТОЛЬКО в build-стадии Dockerfile
-	// (better-auth валидирует секрет при инициализации модуля). В рантайме
-	// runner-стадия её не наследует: без настоящего AUTH_SECRET better-auth
-	// упадёт с «default secret» — fail-fast (§5.18)
-	secret: process.env.AUTH_SECRET ?? process.env.AUTH_SECRET_BUILD_FALLBACK,
+	// Секрет — из env-схемы (этап 11): strict prod требует AUTH_SECRET, lenient
+	// build подставляет AUTH_SECRET_BUILD_FALLBACK (цепочка переехала в lib/env.ts;
+	// better-auth валидирует секрет при инициализации модуля — §5.18)
+	secret: env.AUTH_SECRET,
+	// baseURL — из env-схемы: гасит warn better-auth «Base URL is not set»
+	// (dev-фолбэк localhost:3000 в lib/env.ts, prod задаёт compose — §5.32-а)
+	baseURL: env.BETTER_AUTH_URL,
 	database: drizzleAdapter(db, {
 		provider: 'pg',
 		schema,
@@ -28,7 +34,7 @@ export const auth = betterAuth({
 		phoneNumber({
 			otpLength: 4,
 			sendOTP: async ({ phoneNumber }) => {
-				console.log(`[SMS-заглушка] код ${DEMO_SMS_CODE} → ${phoneNumber}`)
+				log.info(`[SMS-заглушка] код ${DEMO_SMS_CODE} → ${phoneNumber}`)
 				// строка в аутбокс (direct send, мимо флушера — интерактивный OTP, §5.16)
 				await db.insert(notifications).values({
 					channel: 'sms',

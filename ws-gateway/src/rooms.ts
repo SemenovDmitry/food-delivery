@@ -1,5 +1,6 @@
 import { WebSocket } from 'ws'
 
+import { logger } from './logger.js'
 import type { ChatIdentity, ChatServerMessage } from './protocol.js'
 
 /** Соединение с идентичностью из upgrade-аутентификации */
@@ -74,8 +75,9 @@ export function sweepConnections(pingIntervalMs: number): NodeJS.Timeout {
 	return setInterval(() => {
 		for (const connection of connections) {
 			if (!connection.alive) {
-				console.log(
-					`[ws-gateway] sweep: terminate ${connection.identity.kind} (нет pong за ${pingIntervalMs}мс)`,
+				logger.info(
+					{ kind: connection.identity.kind, pingIntervalMs },
+					'sweep: terminate (нет pong)',
 				)
 				connection.ws.terminate()
 				continue

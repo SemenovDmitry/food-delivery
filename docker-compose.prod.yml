@@ -40,6 +40,13 @@ services:
       WS_ALLOWED_ORIGINS: http://localhost:3000
     ports:
       - "3001:3001"
+    healthcheck:
+      # HTTP /health на том же сервере, что и WS-upgrade (этап 11, Q5-в);
+      # busybox wget в node:22-alpine есть. Порт 3001 — из environment выше
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:3001/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
     depends_on:
       postgres:
         condition: service_healthy
@@ -67,6 +74,17 @@ services:
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
+    healthcheck:
+      # Официальный live-проб MinIO; приоритет curl, фолбэк wget (наличие того
+      # или другого в bitnamilegacy-образе проверить эмпирически на приёмке — тикет 05)
+      test:
+        [
+          "CMD-SHELL",
+          "curl -sf http://localhost:9000/minio/health/live || wget -qO /dev/null http://localhost:9000/minio/health/live || exit 1",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
     volumes:
       - food-minio-data:/data
 

@@ -1,4 +1,7 @@
 import { sendEmail } from '@/lib/email'
+import { logger } from '@/lib/logger'
+
+const log = logger.child({ component: 'notifications' })
 
 /**
  * Провайдеры каналов аутбокса (этап 10, Q7) — seam для roadmap-замены на
@@ -29,7 +32,7 @@ const smsProvider: ChannelProvider = {
 	send: async (payload) => {
 		const to = readString(payload, 'to')
 		const text = readString(payload, 'text')
-		console.log(`[SMS-заглушка] «${text}» → ${to}`)
+		log.info(`[SMS-заглушка] «${text}» → ${to}`)
 	},
 }
 

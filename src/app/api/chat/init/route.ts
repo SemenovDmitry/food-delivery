@@ -11,7 +11,11 @@ import {
 	toBroadcastMessage,
 } from '@/lib/chat'
 import { isUuid } from '@/lib/id'
+import { logger } from '@/lib/logger'
+import { getRequestId } from '@/lib/request-id'
 import { getSession } from '@/lib/session'
+
+const log = logger.child({ component: 'chat' })
 
 /**
  * Идентичность и история чата (этап 6, Q2/Q4): сессия → тред по userId
@@ -50,7 +54,7 @@ export async function POST(): Promise<Response> {
 			{ headers: { 'Cache-Control': 'no-store' } },
 		)
 	} catch (error) {
-		console.error('chat/init:', error)
+		log.error({ err: error, requestId: await getRequestId() }, 'chat/init упал')
 		return Response.json({ error: 'Не удалось открыть чат' }, { status: 500 })
 	}
 }

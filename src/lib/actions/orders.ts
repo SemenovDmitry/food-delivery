@@ -17,7 +17,12 @@ import { getCartLines, getOrCreateCart } from '@/lib/cart'
 import { MAX_QTY } from '@/lib/constants'
 import { deliveryFeeFor } from '@/lib/delivery'
 import { isUuid } from '@/lib/id'
+import { logger } from '@/lib/logger'
 import { CANCELLABLE_STATUSES } from '@/lib/order-timeline'
+import { getRequestId } from '@/lib/request-id'
+
+const log = logger.child({ component: 'orders' })
+
 import { transitionOrderStatus } from '@/lib/order-transition'
 import { getPaymentProvider } from '@/lib/payments'
 import { calcDiscount, isPromoInWindow, toCalcLines } from '@/lib/promo'
@@ -161,7 +166,12 @@ export async function createOrder(
 				.where(eq(payments.orderId, orderId))
 			payUrl = initiated.redirectUrl
 		} catch (error) {
-			console.error('createOrder: initiate провайдера упал — оплата позже через CTA', error)
+			// осознанно warn (не error): это handled-деградация — заказ жив,
+			// оплату клиент сделает позже через CTA на трекинге
+			log.warn(
+				{ err: error, orderId, requestId: await getRequestId() },
+				'createOrder: initiate провайдера упал — оплата позже через CTA',
+			)
 		}
 	}
 

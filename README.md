@@ -39,3 +39,28 @@ Mailpit (письма): http://localhost:8025 · MinIO: http://localhost:9000
 | 11   | Ops-харднинг                                         | health, структурные логи, security-заголовки          |
 
 План и статус ведутся в [AGENTS.md](./AGENTS.md); термины домена — [GLOSSARY.md](./GLOSSARY.md).
+
+## Бэкап и восстановление (этап 11)
+
+**Бэкап** — скрипт на хосте (docker CLI), plain SQL + gzip:
+
+```bash
+scripts/backup-db.sh                                        # prod-стек (по умолчанию)
+COMPOSE_FILE=docker-compose.dev.yml scripts/backup-db.sh    # dev-стек
+# → backups/food-YYYYMMDD-HHMMSS.sql.gz (в .gitignore)
+```
+
+MinIO (картинки) не бэкапится — план этапа покрывает только `pg_dump`. Расписаний нет — cron в §9 roadmap.
+
+**Восстановление** — в целевую БД (свежий volume или после сноса данных):
+
+```bash
+# 1. Снести схему и залить дамп (две команды одним psql-вызовом):
+gunzip -c backups/food-YYYYMMDD-HHMMSS.sql.gz | head -n 0 > /dev/null   # проверка целостности gzip
+gunzip -c backups/food-YYYYMMDD-HHMMSS.sql.gz > /tmp/dump.sql
+docker compose -f docker-compose.prod.yml exec -T postgres psql -U postgres -d food_delivery \
+  -c "DROP SCHEMA public CASCADE" -c "CREATE SCHEMA public"
+docker compose -f docker-compose.prod.yml exec -T postgres psql -U postgres -d food_delivery < /tmp/dump.sql
+```
+
+После восстановления стоит прогнать `pnpm db:seed` (идемпотентен): досыпает демо-аккаунты/акции, если дамп старше сидера. **Fresh volume** — миграции применит сам entrypoint контейнера (`scripts/migrate.mjs` перед `node server.js`, идемпотентно по `__drizzle_migrations`), сидеть на пустой схеме контейнер не начнёт.

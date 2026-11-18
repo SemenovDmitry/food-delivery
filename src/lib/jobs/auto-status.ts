@@ -1,10 +1,14 @@
 import { and, eq, inArray, lt, lte, ne, or } from 'drizzle-orm'
 import { db } from '@/db'
 import { orderStatusEvents, orders, payments } from '@/db/schema'
+import { env } from '@/lib/env'
 import { shortOrderId } from '@/lib/id'
+import { logger } from '@/lib/logger'
 import { ACTIVE_STATUSES, fulfillmentOf, isOrderStatus, nextStatuses } from '@/lib/order-timeline'
 import { transitionOrderStatus } from '@/lib/order-transition'
 import { paymentWindowCutoff } from '@/lib/payments/window'
+
+const log = logger.child({ component: 'autostatus' })
 
 /**
  * Автоджоба статусов (этап 10, Q2/Q4/Q5/Q8): тик раз в DEMO_AUTO_STATUS_INTERVAL
@@ -23,23 +27,9 @@ import { paymentWindowCutoff } from '@/lib/payments/window'
  *
  * Все переходы — через ядро transitionOrderStatus: события и SMS-строка
  * «заказ готов» пишутся по построению. Оплаченные не отменяются никогда.
- * Логи — console.log с коротким id (pino — этап 11).
+ * Env — из схемы (этап 11, Q3): клампы интервала/ставки переехали в жёсткие
+ * границы схемы (нарушение = падение на старте, не молчаливый кламп).
  */
-
-function isAutoStatusEnabled(): boolean {
-	const raw = process.env.DEMO_AUTO_STATUS
-	return raw === 'true' || raw === '1'
-}
-
-function autoStatusIntervalMs(): number {
-	const raw = Number(process.env.DEMO_AUTO_STATUS_INTERVAL)
-	return Number.isFinite(raw) && raw > 0 ? Math.max(5000, raw) : 60_000
-}
-
-function autoCancelRate(): number {
-	const raw = Number(process.env.DEMO_AUTO_CANCEL_RATE)
-	return Number.isFinite(raw) ? Math.min(1, Math.max(0, raw)) : 0.1
-}
 
 /** Свип просрочки окна оплаты — единственный системный писатель cancelled_by_timeout */
 async function sweepExpiredOnlineOrders(): Promise<number> {
@@ -84,9 +74,15 @@ async function sweepExpiredOnlineOrders(): Promise<number> {
 					.values({ orderId: candidate.id, status: 'cancelled_by_timeout' })
 			})
 			swept += 1
-			console.log(`[автоджоба] свип: заказ ${shortOrderId(candidate.id)} → cancelled_by_timeout`)
+			log.info(
+				{ orderId: candidate.id, shortId: shortOrderId(candidate.id) },
+				'свип: заказ → cancelled_by_timeout',
+			)
 		} catch (error) {
-			console.error(`[автоджоба] свип: заказ ${shortOrderId(candidate.id)} — сбой, пропущен`, error)
+			log.error(
+				{ err: error, orderId: candidate.id, shortId: shortOrderId(candidate.id) },
+				'свип: заказ — сбой, пропущен',
+			)
 		}
 	}
 	return swept
@@ -94,7 +90,7 @@ async function sweepExpiredOnlineOrders(): Promise<number> {
 
 /** Продвижение живых заказов на один шаг (только под DEMO_AUTO_STATUS) */
 async function advanceOrders(): Promise<number> {
-	const cutoff = new Date(Date.now() - autoStatusIntervalMs())
+	const cutoff = new Date(Date.now() - env.DEMO_AUTO_STATUS_INTERVAL)
 
 	// неоплаченные online исключены здесь: их продвижение гвардится ядром, а
 	// судьбу решает свип по окну — дёргать ядро ради отказа каждый тик незачем
@@ -130,13 +126,18 @@ async function advanceOrders(): Promise<number> {
 				candidate.status === 'created' &&
 				candidate.paymentMethod === 'on_receipt' &&
 				candidate.paymentStatus === 'pending' &&
-				Math.random() < autoCancelRate()
+				Math.random() < env.DEMO_AUTO_CANCEL_RATE
 			) {
 				const result = await transitionOrderStatus(candidate.id, 'cancelled_by_vendor')
 				if (result.data) {
 					advanced += 1
-					console.log(
-						`[автоджоба] заказ ${shortOrderId(candidate.id)}: демо-отмена заведением (~${Math.round(autoCancelRate() * 100)}%)`,
+					log.info(
+						{
+							orderId: candidate.id,
+							shortId: shortOrderId(candidate.id),
+							rate: env.DEMO_AUTO_CANCEL_RATE,
+						},
+						`демо-отмена заведением (~${Math.round(env.DEMO_AUTO_CANCEL_RATE * 100)}%)`,
 					)
 				}
 				continue
@@ -145,15 +146,27 @@ async function advanceOrders(): Promise<number> {
 			const result = await transitionOrderStatus(candidate.id, next)
 			if (result.data) {
 				advanced += 1
-				console.log(
-					`[автоджоба] заказ ${shortOrderId(candidate.id)}: ${candidate.status} → ${next}`,
+				log.info(
+					{
+						orderId: candidate.id,
+						shortId: shortOrderId(candidate.id),
+						from: candidate.status,
+						to: next,
+					},
+					'заказ продвинут',
 				)
 			} else {
 				// гонка/гвард — не ошибка демо: лог и следующий тик
-				console.log(`[автоджоба] заказ ${shortOrderId(candidate.id)} не продвинут: ${result.error}`)
+				log.info(
+					{ orderId: candidate.id, shortId: shortOrderId(candidate.id), reason: result.error },
+					'заказ не продвинут',
+				)
 			}
 		} catch (error) {
-			console.error(`[автоджоба] заказ ${shortOrderId(candidate.id)} — сбой, пропущен`, error)
+			log.error(
+				{ err: error, orderId: candidate.id, shortId: shortOrderId(candidate.id) },
+				'заказ — сбой, пропущен',
+			)
 		}
 	}
 	return advanced
@@ -166,7 +179,7 @@ export async function autoStatusTick(): Promise<{ swept: number; advanced: numbe
 	g.__foodJobTickRunning = true
 	try {
 		const swept = await sweepExpiredOnlineOrders()
-		const advanced = isAutoStatusEnabled() ? await advanceOrders() : 0
+		const advanced = env.DEMO_AUTO_STATUS ? await advanceOrders() : 0
 		return { swept, advanced }
 	} finally {
 		g.__foodJobTickRunning = false
@@ -178,10 +191,11 @@ export function startAutoStatusJob(): void {
 	const g = globalThis as { __foodJobStarted?: boolean }
 	if (g.__foodJobStarted) return
 	g.__foodJobStarted = true
-	console.log(
-		`[автоджоба] стартовала (тик ${autoStatusIntervalMs()} мс, продвижение: ${isAutoStatusEnabled() ? 'on' : 'off'}, свип: всегда)`,
+	log.info(
+		{ intervalMs: env.DEMO_AUTO_STATUS_INTERVAL, advance: env.DEMO_AUTO_STATUS },
+		'автоджоба стартовала (свип: всегда)',
 	)
 	setInterval(() => {
-		autoStatusTick().catch((error) => console.error('[автоджоба] тик упал', error))
-	}, autoStatusIntervalMs()).unref?.()
+		autoStatusTick().catch((error) => log.error({ err: error }, 'тик автоджобы упал'))
+	}, env.DEMO_AUTO_STATUS_INTERVAL).unref?.()
 }

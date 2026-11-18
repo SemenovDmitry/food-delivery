@@ -18,6 +18,10 @@ const nextConfig: NextConfig = {
 	partialPrefetching: true,
 	reactCompiler: true,
 	output: 'standalone',
+	// pino (этап 11): CJS с внутренними require (sonic-boom/thread-stream) —
+	// бандлер их калечит; ресолвить из node_modules в рантайме (standalone
+	// находит их через file-tracing)
+	serverExternalPackages: ['pino', 'pino-pretty'],
 	images: {
 		remotePatterns: [
 			{ protocol: s3Endpoint.startsWith('https') ? 'https' : 'http', hostname: s3Hostname },
@@ -35,6 +39,26 @@ const nextConfig: NextConfig = {
 				as: '*.css',
 			},
 		},
+	},
+	/**
+	 * Security-заголовки (этап 11, Q10): nosniff / DENY (iframe'ов нет —
+	 * pay-страница наша) / uuid-ссылки не утекают в Referer / браузерные API
+	 * проекту не нужны. CSP и HSTS сознательно НЕТ: строгий CSP требует
+	 * nonce-механики (Next живёт на inline-script, cacheComponents), HSTS
+	 * бессмыслен без TLS — оба в §9 после TLS/домена (Caddy).
+	 */
+	async headers() {
+		return [
+			{
+				source: '/:path*',
+				headers: [
+					{ key: 'X-Content-Type-Options', value: 'nosniff' },
+					{ key: 'X-Frame-Options', value: 'DENY' },
+					{ key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+					{ key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+				],
+			},
+		]
 	},
 }
 

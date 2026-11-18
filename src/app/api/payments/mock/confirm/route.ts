@@ -1,9 +1,14 @@
 import { and, eq, inArray, ne } from 'drizzle-orm'
 import { db } from '@/db'
 import { orders, paymentMethods, payments } from '@/db/schema'
+import { env } from '@/lib/env'
 import { isUuid } from '@/lib/id'
+import { logger } from '@/lib/logger'
 import { getPaymentProvider, signHmac, WEBHOOK_SIGNATURE_HEADER } from '@/lib/payments'
+import { getRequestId } from '@/lib/request-id'
 import { paymentConfirmSchema } from '@/lib/schemas/payment'
+
+const log = logger.child({ component: 'payments' })
 
 /**
  * POST /api/payments/mock/confirm (этап 9, Q1-Б) — «бэкенд провайдера»:
@@ -21,13 +26,10 @@ type ConfirmOk = { outcome: string; redirectUrl: string | null }
 type ConfirmError = { error?: string; outcome?: string; redirectUrl?: string | null }
 
 export async function POST(request: Request): Promise<Response> {
-	const secret = process.env.PAYMENTS_WEBHOOK_SECRET
-	if (!secret) {
-		// fail-fast ВНУТРИ хендлера (семья §5.3): module-level throw валит build
-		return Response.json({ error: 'PAYMENTS_WEBHOOK_SECRET не задан' } satisfies ConfirmError, {
-			status: 500,
-		})
-	}
+	// Секрет — из env-схемы (этап 11): строка гарантирована (lenient-фолбэк build,
+	// strict prod). Раньше fail-fast был внутри хендлера (семья §5.3) — теперь
+	// падение с читаемым списком происходит на старте контейнера.
+	const secret = env.PAYMENTS_WEBHOOK_SECRET
 
 	const parsed = paymentConfirmSchema.safeParse(await request.json().catch(() => null))
 	if (!parsed.success) {
@@ -150,7 +152,10 @@ export async function POST(request: Request): Promise<Response> {
 		webhookStatus = webhookResponse.status
 		webhookOutcome = (await webhookResponse.json().catch(() => null))?.outcome ?? null
 	} catch (error) {
-		console.error('payments/mock/confirm: loopback webhook упал', error)
+		log.error(
+			{ err: error, requestId: await getRequestId(), orderId },
+			'payments/mock/confirm: loopback webhook упал',
+		)
 		return Response.json({ error: 'Платёжный провайдер недоступен' } satisfies ConfirmError, {
 			status: 500,
 		})
