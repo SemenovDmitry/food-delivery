@@ -1,4 +1,4 @@
-import type { Cookie } from '@playwright/test'
+import { type Cookie, expect, type Page } from '@playwright/test'
 
 /**
  * Хелперы e2e (этап 12, тикет 02): API-логин по телефону (better-auth
@@ -68,4 +68,35 @@ export async function demoSession(phone: keyof typeof DEMO | string): Promise<{
 	origins: []
 }> {
 	return { cookies: await phoneSessionCookies(phone), origins: [] }
+}
+
+/**
+ * Карточка товара на главной — по заголовку h3 (точное имя): hasText по статье
+ * цепляет сеты, чей состав содержит то же слово (§6 сидера).
+ */
+export function menuCard(page: Page, name: string) {
+	return page.locator('article').filter({
+		has: page.getByRole('heading', { name, exact: true }),
+	})
+}
+
+/**
+ * Гостевой заказ через UI (P1-3-паттерн, переиспользуется P2/P3): Маргарита →
+ * корзина → чекаут «При получении» → uuid из URL. Возвращает полный uuid.
+ */
+export async function createGuestOrder(page: Page): Promise<string> {
+	await page.goto('/')
+	await menuCard(page, 'Маргарита').getByRole('button', { name: 'В корзину' }).click()
+	await expect(page.getByText('В корзине 1 товар', { exact: true })).toBeVisible()
+
+	await page.goto('/cart')
+	await page.getByRole('link', { name: 'Перейти к оформлению' }).click()
+	await expect(page).toHaveURL(/\/checkout/)
+	await page.getByLabel('Имя').fill('Е2Е Гость')
+	await page.getByLabel('Телефон').fill('89991234567')
+	await page.getByLabel('Адрес доставки').fill('ул. Тестовая, д. 1')
+	await page.getByRole('button', { name: 'Оформить заказ' }).click()
+
+	await expect(page).toHaveURL(/\/orders\/[0-9a-f-]{36}/, { timeout: 20_000 })
+	return page.url().split('/').pop() ?? ''
 }
