@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { cartLines, cartPromoSecret, cartPromoShawarma } from './fixtures'
+import { cartLines, cartPromoSecret, cartPromoShawarma, margheritaLine } from './fixtures'
 import { PromoBlock } from './promo-block'
 
 /**
@@ -21,6 +21,15 @@ type Story = StoryObj<typeof meta>
 /** Доступная акция — кнопка «Применить» и сумма скидки */
 export const Available: Story = {
 	args: { activePromo: null, availablePromos: [cartPromoShawarma] },
+}
+
+/** Неприменимая по составу: порог minTotal не достигнут — disabled + причина (calcDiscount) */
+export const NotApplicable: Story = {
+	args: {
+		lines: [margheritaLine],
+		activePromo: null,
+		availablePromos: [{ ...cartPromoShawarma, minTotal: 100000 }],
+	},
 }
 
 /** Активная — карточка подсвечена, кнопка заменена ✕ */

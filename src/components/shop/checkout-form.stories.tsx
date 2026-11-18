@@ -31,8 +31,10 @@ export const PrefilledFromSession: Story = {
 	args: { initialName: 'Дмитрий', initialPhone: '+7 999 000-00-03' },
 }
 
-/** Способ оплаты — оба провайдера видны (Сбербанк/UnionPay активны) */
-export const OnlineAvailable: Story = { args: { ...EmptyGuestForm.args } }
+/** Онлайн доступен: prefill из сессии + radio «Онлайн-оплата» */
+export const OnlineAvailable: Story = {
+	args: { initialName: 'Дмитрий', initialPhone: '+7 999 000-00-03' },
+}
 
 /** Провайдеры выключены админом (Q20) — radio онлайн скрыт */
 export const OnlineHidden: Story = { args: { hasActiveProviders: false } }

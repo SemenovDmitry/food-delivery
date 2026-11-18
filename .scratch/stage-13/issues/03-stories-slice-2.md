@@ -4,9 +4,17 @@
 
 **Blocked by:** 02 (этап 13)
 
-**Status:** open
+**Status:** resolved
 
-- [ ] cart-interactive + promo-block: мок-action'ы (инъекция с дефолтом при необходимости)
-- [ ] checkout-form: инъекция onSubmit, стори валидации/серверной ошибки
-- [ ] order-tracker: мок fetch, смена статуса в стори
-- [ ] `pnpm build-storybook` зелёный; next build не сломан (правки прод-компонентов обратно-совместимы)
+- [x] cart-interactive + promo-block: мок-action'ы — **Vite-алиасами** (нулевые правки прод-кода; сдвиг от инъекции из плана, задокументирован в тикете 02 Comments), `typeof`-сигнатуры контролирует tsc
+- [x] checkout-form: createOrder замокан алиасом (orders-мок тикета 02); inline-валидация EmptyGuestForm (mode onTouched), PrefilledFromSession, OnlineAvailable/OnlineHidden (Q20)
+- [x] order-tracker: 6 состояний через args (created on_receipt/UnpaidOnline+CTA/PaidOnline/InDelivery/Delivered/CancelledByCustomer — баннер вместо таймлайна), поллинг заморожен fetch-декоратором
+- [x] `pnpm build-storybook` зелёный; next build не сломан (полный цикл на приёмке)
+
+## Comments
+
+- 2026-11-19 (ревью этапа): **отклонения от плана тикета, зафиксированные при ревью**:
+  1. «тик»-кнопка для order-tracker заменена на **состояния через args** — props и есть «смена статуса» (детерминированно, без ожидания 25-с поллинга; живой поллинг ≤35 с покрыт e2e P2-2, терминальное замолкание — P1-3/поллинг e2e).
+  2. **inline-ошибка ввода кода и серверная ошибка → Dialog не стали сторями**: код-ошибка живёт во внутреннем состоянии PromoCodeForm и приходит из applyPromoCode — алиас-мок всесильно успешен, per-story фейл потребовал бы правки мок-инфраструктуры; пути покрыты e2e (SECRET15 вводом P2-4, Q12-модалка — приёмка этапа 1). Добавлена сторя **NotApplicable** (disabled + причина «Нужен заказ от 1 000 ₽» через calcDiscount) — закрыла вторую половину этого пункта плана.
+  3. add-to-cart-button idle/loading/added: loading/added — клик по стори с мок-действием (optimistic pending → тост), отдельные статичные стори не нужны.
+  4. Ревью спеки: `OnlineAvailable` был байт-дублём EmptyGuestForm — стал prefill-вариантом.
