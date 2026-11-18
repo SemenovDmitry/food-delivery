@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { createOrder } from '@/lib/actions/orders'
 import { computeTotals } from '@/lib/cart-totals'
@@ -120,7 +120,12 @@ export function CheckoutForm({
 					</ul>
 					<p className='mt-2 text-sm text-muted-foreground'>
 						Изменить состав можно в{' '}
-						<Link href='/cart' className='text-primary hover:underline'>
+						{/* underline: ссылка внутри текста различается не только цветом
+						    (axe: link-in-text-block, WCAG 1.4.1) */}
+						<Link
+							href='/cart'
+							className='text-primary underline underline-offset-2 hover:no-underline'
+						>
 							корзине
 						</Link>
 					</p>
@@ -140,6 +145,10 @@ export function CheckoutForm({
 									<TabsTrigger value='delivery'>Доставка</TabsTrigger>
 									<TabsTrigger value='pickup'>Самовывоз</TabsTrigger>
 								</TabsList>
+								{/* панели-заглушки: aria-controls таба должен указывать на существующие
+								    id (axe: aria-valid-attr-value, аудит сторей этапа 13) */}
+								<TabsContent value='delivery' />
+								<TabsContent value='pickup' />
 							</Tabs>
 						)}
 					/>

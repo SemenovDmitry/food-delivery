@@ -6,7 +6,7 @@ import { useOptimistic, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { removeFromCart, setQty } from '@/lib/actions/cart'
 import { computeTotals } from '@/lib/cart-totals'
 import type { CartLineData, CartPromoData, DeliverySettingsData } from '@/lib/cart-types'
@@ -148,6 +148,10 @@ export function CartInteractive({
 								<TabsTrigger value='delivery'>Доставка</TabsTrigger>
 								<TabsTrigger value='pickup'>Самовывоз</TabsTrigger>
 							</TabsList>
+							{/* панели-заглушки: aria-controls таба должен указывать на существующие id
+							    (axe: aria-valid-attr-value, аудит сторей этапа 13); контент меняется ниже */}
+							<TabsContent value='delivery' />
+							<TabsContent value='pickup' />
 						</Tabs>
 
 						<OrderTotals

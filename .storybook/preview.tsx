@@ -1,4 +1,10 @@
 import type { Decorator, Preview } from '@storybook/nextjs-vite'
+import { AppRouterContext } from 'next/dist/shared/lib/app-router-context.shared-runtime'
+import {
+	PathnameContext,
+	ReadonlyURLSearchParams,
+	SearchParamsContext,
+} from 'next/dist/shared/lib/hooks-client-context.shared-runtime'
 import { ThemeProvider } from 'next-themes'
 import { Toaster } from 'sonner'
 import '../src/app/globals.css'
@@ -15,6 +21,43 @@ const shellDecorator: Decorator = (Story) => {
 			<Toaster position='bottom-right' />
 			<Story />
 		</>
+	)
+}
+
+/**
+ * App Router-контексты (найдено на axe-аудите): useRouter/useSearchParams из
+ * 'next/navigation' бросают «invariant expected app router to be mounted» без
+ * провайдера — подставляем мок-роутер в РЕАЛЬНЫЕ контексты Next (alias-подход
+ * не пробился сквозь бандл SB). query — из реального URL стори-iframe.
+ */
+const appRouterDecorator: Decorator = (Story) => {
+	const router = {
+		push: (href: string) => {
+			console.log(`[sb-router] push ${href}`)
+		},
+		replace: (href: string) => {
+			console.log(`[sb-router] replace ${href}`)
+		},
+		back: () => {
+			console.log('[sb-router] back')
+		},
+		forward: () => {
+			console.log('[sb-router] forward')
+		},
+		refresh: () => {
+			console.log('[sb-router] refresh')
+		},
+		prefetch: () => {},
+	}
+	const searchParams = new ReadonlyURLSearchParams(new URLSearchParams(window.location.search))
+	return (
+		<AppRouterContext.Provider value={router as never}>
+			<PathnameContext.Provider value='/'>
+				<SearchParamsContext.Provider value={searchParams}>
+					<Story />
+				</SearchParamsContext.Provider>
+			</PathnameContext.Provider>
+		</AppRouterContext.Provider>
 	)
 }
 
@@ -47,7 +90,7 @@ const preview: Preview = {
 			},
 		},
 	},
-	decorators: [shellDecorator, themeDecorator],
+	decorators: [shellDecorator, appRouterDecorator, themeDecorator],
 	parameters: {
 		controls: {
 			matchers: {

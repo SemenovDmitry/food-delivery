@@ -108,6 +108,9 @@ importers:
       '@types/react-dom':
         specifier: ^19
         version: 19.3.0(@types/react@19.3.0)
+      axe-core:
+        specifier: ^4.14.1
+        version: 4.14.1
       babel-plugin-react-compiler:
         specifier: ^1.0.0
         version: 1.0.0
@@ -3135,6 +3138,10 @@ packages:
 
   axe-core@4.14.0:
     resolution: {integrity: sha512-9WTZxEjsZ7b13TH8JPmbV2z8CHbl80/2hm3XPEG4JgNdQLK81IBRXmSxHfMAOkSqQeRxT/0dwNDz2GOm3zzpcQ==}
+    engines: {node: '>=4'}
+
+  axe-core@4.14.1:
+    resolution: {integrity: sha512-FHfa+lmNjQZfJz1q8wKqIDwC6DExcHt/pkjNQb09a3NPjCKg2rhu5qb2S4r76ASyFNNtuFooJpZe37OgudVGtQ==}
     engines: {node: '>=4'}
 
   babel-plugin-react-compiler@1.0.0:
@@ -7667,6 +7674,8 @@ snapshots:
       when-exit: 2.1.5
 
   axe-core@4.14.0: {}
+
+  axe-core@4.14.1: {}
 
   babel-plugin-react-compiler@1.0.0:
     dependencies:

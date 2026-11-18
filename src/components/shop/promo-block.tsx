@@ -97,9 +97,8 @@ export function PromoBlock({ activePromo, availablePromos, lines, promoQuery }: 
 					<div className='min-w-0'>
 						<p className='truncate text-sm font-medium'>
 							{activePromo.name}{' '}
-							{activePromo.code && (
-								<span className='text-muted-foreground'>({activePromo.code})</span>
-							)}
+							{/* foreground/80: на bg-primary/5 плашке muted не дотягивает 4.5:1 (axe, этап 13) */}
+							{activePromo.code && <span className='text-foreground/80'>({activePromo.code})</span>}
 						</p>
 						{!plateReason && customQtyDiscount?.applicable ? (
 							<p className='text-xs text-primary'>
@@ -160,7 +159,9 @@ function PromoOptionCard({
 					<p className={cn('truncate text-sm font-medium', isActive && 'text-primary')}>
 						{promo.name}
 					</p>
-					<p className='truncate text-xs text-muted-foreground'>{promo.conditionLabel}</p>
+					{/* foreground/80, не muted: на подсвеченной bg-primary/5 карточке контраст ниже
+				    порога 4.5:1 (axe: color-contrast, аудит сторей этапа 13) */}
+					<p className='truncate text-xs text-foreground/80'>{promo.conditionLabel}</p>
 				</div>
 				{isActive ? (
 					<Button

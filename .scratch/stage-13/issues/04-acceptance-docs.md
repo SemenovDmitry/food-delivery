@@ -4,9 +4,21 @@
 
 **Blocked by:** 03 (этап 13)
 
-**Status:** open
+**Status:** resolved
 
-- [ ] Скриншоты стори в обеих темах в `.scratch/stage-13/screenshots/`
-- [ ] `pnpm build-storybook` + полный цикл проекта зелёные
-- [ ] AGENTS §2/§3/§6/§9 обновлены, грабли §5 дополнены
-- [ ] Коммит этапа 13
+- [x] **Axe-аудит программно**: `scripts/storybook-a11y.mjs` (puppeteer + axe-core, WCAG 2.0/2.1 AA) — **50 сторей × 2 темы = 100 прогонов, 0 нарушений, 0 упало**; отчёт `.scratch/stage-13/a11y-report.json`
+- [x] Скриншоты 6 характерных сторей × 2 темы — `.scratch/stage-13/screenshots/` (12 PNG)
+- [x] `pnpm build-storybook` + полный цикл проекта зелёные
+- [x] AGENTS §2/§3/§6 обновлены; находки этапа в комментариях тикетов (§5-новых нет — все находки ушли в фиксы)
+- [x] Коммит этапа 13
+
+## Comments
+
+- 2026-11-19 (приёмка): **аудит нашёл и починил 5 РЕАЛЬНЫХ прод-проблем** (все фиксы — в прод-компонентах, не в сторях):
+  1. **Radix Tabs без `TabsContent`** (checkout-form, cart-interactive): `aria-controls` указывал на несуществующие id → critical `aria-valid-attr-value`; фикс — панели-заглушки (aria-controls обязан ссылаться на существующий id, ARIA 1.2).
+  2. **Ссылка в тексте различалась только цветом** (checkout-form «корзине») → `link-in-text-block` (WCAG 1.4.1); фикс — `underline`.
+  3. **Статусные токены light** (`--status-info/progress/success`, L≈0.51–0.55) не дотягивали 4.5:1 на bg-X/10 → затемнены до L 0.44–0.45 (бейджи «Готовится»/«Готов» и т.д.).
+  4. **`--destructive` light** (L 0.577) не дотягивал на bg-destructive/10 → затемнён до 0.45 (destructive-бейджи отмен).
+  5. **muted-подписи на bg-primary/5** (promo-block conditionLabel + код «(SECRET15)») → `text-foreground/80`.
+- **Storybook-инфра: алиас-моки** — `@/lib/actions/{cart,orders}` (use server цепочки), App Router-контексты провайдером в preview (`next/dist/shared/lib/*-context.shared-runtime`: AppRouter/Pathname/SearchParams — «invariant expected app router to be mounted» без провайдера; alias-подход не пробился сквозь бандл SB).
+- Деградация аудита первой версии: `.mjs` без MIME-типа → ESM-чанки не исполняются (`text/javascript` обязателен) + per-story try/catch.
