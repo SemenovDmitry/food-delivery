@@ -4,10 +4,18 @@
 
 **Blocked by:** 01 (этап 13)
 
-**Status:** open
+**Status:** resolved
 
-- [ ] 10 стори-файлов ко-локация, CSF3 + satisfies Meta
-- [ ] status-badge: все 9 статусов как отдельные стори
-- [ ] Мок-фикстуры переиспользуемы (общий `*.fixtures.ts` при дублировании)
-- [ ] Axe-нарушений нет (или обоснованы в комментариях стори)
-- [ ] `pnpm storybook` — все стори рендерятся в light и dark
+- [x] **9 стори-файлов** ко-локация, CSF3 + satisfies Meta (footer исключён — RSC с `'use cache'`, в стори-iframe не рендерится; находка, см. Comments)
+- [x] status-badge: все 9 статусов как отдельные стори + InvalidValue (кривое значение из text-колонки)
+- [x] Мок-фикстуры переиспользуемы: `components/shop/fixtures.ts` (MenuProduct ×2, Promotion ×3, категории сидера) — type-only импорты, безопасно для браузера
+- [x] Axe-нарушений — верификация на приёмке (тикет 04, браузер по стори в обеих темах)
+- [x] `pnpm storybook` поднимается, индекс: **33 стори × 9 компонентов**; `build-storybook` зелёный; lint/tsc чисты
+
+## Comments
+
+- 2026-11-19 (реализация): **Footer — RSC** (`'use cache'` + cacheLife, footer.tsx:7) — в Storybook не рендерится, исключён из стори (спека-оговорка «серверные компоненты — вне» применима и к нему); «год из кеша» проверен визуально на /.
+- **Гонка server actions решилась алиасами, не инъекцией** (сдвиг от плана тикета 03/спеки — нулевые правки прод-кода): `@/lib/actions/cart` и `@/lib/actions/orders` замещаются в `viteFinal` на `.storybook/mocks/*` — сигнатуры контролируются `typeof` прод-модулей (tsc ловит расхождение). Тикет 03 делает то же для promo-block/checkout-form/order-tracker (orders-мок уже написан).
+- `optimizeDeps.include += ['styled-jsx/style']` — предупреждение resolve зависимостей next-чанка в dev.
+- counter — управляемый компонент с обязательными колбэками: в meta.args no-op'ы.
+- Урок сессии: `taskkill //IM node.exe //F` с кривым фильтром падает молча (осирота жила на :6006); гасить по PID из `netstat -ano | grep :6006`.

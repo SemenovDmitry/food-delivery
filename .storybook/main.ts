@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url'
 import type { StorybookConfig } from '@storybook/nextjs-vite'
 import tailwindcss from '@tailwindcss/vite'
 
@@ -15,6 +16,24 @@ const config: StorybookConfig = {
 	viteFinal: async (vite) => {
 		vite.plugins = vite.plugins ?? []
 		vite.plugins.push(tailwindcss())
+		// styled-jsx/style (зависимость next-чанка) — предупреждение optimizeDeps
+		vite.optimizeDeps = vite.optimizeDeps ?? {}
+		vite.optimizeDeps.include = [...(vite.optimizeDeps.include ?? []), 'styled-jsx/style']
+		// 'use server' модули тянут drizzle/env — в браузере стори-iframe
+		// неподняемы; компоненты не трогаем (нулевые правки прод-кода),
+		// моки подставляются алиасами, сигнатуры контролирует tsc
+		vite.resolve = vite.resolve ?? {}
+		vite.resolve.alias = [
+			...(Array.isArray(vite.resolve.alias) ? vite.resolve.alias : []),
+			{
+				find: '@/lib/actions/cart',
+				replacement: fileURLToPath(new URL('./mocks/cart-actions.ts', import.meta.url)),
+			},
+			{
+				find: '@/lib/actions/orders',
+				replacement: fileURLToPath(new URL('./mocks/order-actions.ts', import.meta.url)),
+			},
+		]
 		return vite
 	},
 }
