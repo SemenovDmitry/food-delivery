@@ -1,4 +1,6 @@
 import type { Promotion } from '@/db/schema'
+import type { CartLineData, CartPromoData } from '@/lib/cart-types'
+import type { DeliverySettings } from '@/lib/delivery'
 import type { MenuProduct } from '@/queries/menu'
 
 /**
@@ -113,3 +115,56 @@ export const menuCategories = [
 	{ slug: 'drinks', name: 'Напитки' },
 	{ slug: 'desserts', name: 'Десерты' },
 ]
+
+// ─── Данные корзины (CartLineData/CartPromoData) — слайс 2 ───────────────────
+
+export const margheritaLine: CartLineData = {
+	productId: margherita.id,
+	name: margherita.name,
+	emoji: margherita.emoji,
+	price: margherita.price,
+	qty: 1,
+	categoryId: 1,
+}
+
+export const klassicheskayaLine: CartLineData = {
+	productId: '44444444-4444-4444-4444-444444444444',
+	name: 'Классическая',
+	emoji: '🌯',
+	price: 34000,
+	qty: 2,
+	categoryId: 2,
+}
+
+export const cartLines = [margheritaLine, klassicheskayaLine]
+
+/** Клиентское промо (CartPromoData = CalcPromo + витринные поля, stateReason) */
+export const cartPromoShawarma: CartPromoData = {
+	id: promoShawarma.id,
+	name: promoShawarma.name,
+	code: promoShawarma.code,
+	conditionLabel: 'только: Шаурма',
+	stateReason: null,
+	discountType: 'percent',
+	discountValue: 20,
+	categoryId: 2,
+	minTotal: 0,
+}
+
+export const cartPromoSecret: CartPromoData = {
+	id: 'aaaaaaaa-0000-0000-0000-000000000004',
+	name: '−15% на весь заказ',
+	code: 'SECRET15',
+	conditionLabel: 'на весь заказ',
+	stateReason: null,
+	discountType: 'percent',
+	discountValue: 15,
+	categoryId: null,
+	minTotal: 0,
+}
+
+/** Канон сидера: 199 ₽, бесплатно от 1 000 ₽ */
+export const deliverySettings: DeliverySettings = {
+	deliveryFee: 19900,
+	freeDeliveryThreshold: 100000,
+}
