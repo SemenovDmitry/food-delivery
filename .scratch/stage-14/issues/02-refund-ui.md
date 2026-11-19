@@ -4,10 +4,14 @@
 
 **Blocked by:** 01
 
-**Status:** open
+**Status:** resolved
 
-- [ ] PaymentChip: «Возвращено» (refunded) — виден и на отменённых
-- [ ] Баннеры отмены оплаченного с возвратом (refundState-проп из RSC)
-- [ ] Dialog отмены оплаченного — «Средства вернутся на счёт»
-- [ ] Storybook: сторя RefundedCancelled, axe чист
-- [ ] lint/tsc/build-storybook зелёные
+- [x] PaymentChip: «Возвращено»/«Возврат выполняется» — ИСКЛЮЧЕНИЕ из «чип скрыт на отменённых» (ответ на «а деньги?»; «Ожидает оплаты» по-прежнему скрыт)
+- [x] Баннеры отмены оплаченного: cancelBannerText(base, paymentStatus) — «— средства вернутся на счёт» (paid, живой setState) / «— возврат выполнен» (refunded, RSC-снапшот); refundState-проп НЕ понадобился — order-level paymentStatus='refunded' доезжает существующим initialPaymentStatus (спека #8 выдержана: DTO не расширялся)
+- [x] Dialog отмены оплаченного — «Средства вернутся на счёт.»
+- [x] Storybook: сторя RefundedCancelled; axe **104 прогона (52 стори × 2 темы) — 0 нарушений**
+- [x] lint/tsc/build-storybook зелёные
+
+## Comments
+
+- 2026-11-19 (реализация): admin `/admin/orders` PaymentBadge — трёхсостояный (Оплачен/Ожидает/**Возврат выполнен**); cancelBannerText живой setState даёт «средства вернутся» (paymentStatus=paid в момент отмены), «возврат выполнен» виден при перезаходе (RSC-снапшот refunded; поллинг замолкает на терминальном — осознанное ограничение спеки #8, e2e P3-4 проверяет оба состояния).

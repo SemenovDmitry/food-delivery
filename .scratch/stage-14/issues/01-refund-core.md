@@ -4,12 +4,18 @@
 
 **Blocked by:** —
 
-**Status:** open
+**Status:** resolved
 
-- [ ] `PAYMENT_STATUSES` += refunding/refunded; `WebhookEvent.status` += refunded; `PaymentProvider.refund?`
-- [ ] `MockProvider.refund` (мгновенный) + `verifyWebhook` принимает refunded
-- [ ] `lib/payments/refund.ts` — refund-отмена (tx1 отмена+refunding → provider.refund вне tx → tx2 refunded), общий для cancelOrder/transitionOrderStatus
-- [ ] Гварды: cancelOrder paid-ветка → refund; transitionOrderStatus «Оплаченный…» — только on_receipt-страховка, online+paid → refund
-- [ ] applyPaymentEvent: refunded-ветка (идемпотентно)
-- [ ] Юнит-тесты чистых частей (refund-форма, verifyWebhook refunded) зелёные
-- [ ] lint/tsc×2/unit зелёные
+- [x] `PAYMENT_STATUSES` += refunding/refunded; `ORDER_PAYMENT_STATUSES` += refunded (order-level — чип через существующий поллинг-DTO, спека #8); `WebhookEvent.status` += refunded; `PaymentProvider.refund?` опциональный
+- [x] `MockProvider.refund` (мгновенный) + `verifyWebhook` принимает refunded
+- [x] `lib/payments/refund.ts` — refund-отмена: гвард online+paid → tx1 (отмена+refunding+событие, conditional) → provider.ref() ВНЕ tx → tx2 refunding→refunded + orders→refunded; провал refund() → платёж остаётся refunding + logger.warn
+- [x] Гварды: cancelOrder делегирует refundCancelOrder (raceError-параметр — тексты этапа 4 дословно); transitionOrderStatus: on_receipt+paid страховка, online+paid → refund-ветка
+- [x] applyPaymentEvent: refunded-ветка (paid|refunding → refunded идемпотентно; конфликт на незрелых); **ветка «заказ отменён» не затирает paid/refunding/refunded** (владелец — refund-поток)
+- [x] Юнит-тесты: mock.test.ts ×5 (форма/уникальность refundId, подпись refunded, негативы) — **70 passed**
+- [x] lint/tsc×2/unit зелёные
+
+## Comments
+
+- 2026-11-19 (реализация): **order-level `paymentStatus: 'refunded'`** — осознанное отклонение от спеки-минимума (только payments): без него чип «Возвращено» не виден через поллинг-DTO; гварды refund-потока фильтруют по `paid`, refunded-заказы повторно не refund-ятся. Webhook-ветка «заказ отменён» скорректирована: затирала refunding/refunded → теперь закрывает только created/processing (этап-9-поведение для «незрелых» сохранено).
+- refund.ts: raceError-параметр (тексты гонок callers дословно); vendor-отмена готова из ready (карта этапа 5) — оплаченный ready тоже refund-ится.
+- console.warn → logger.warn (канон этапа 11; warn=40 → error_events sink — провал refund'а провайдера того стоит).

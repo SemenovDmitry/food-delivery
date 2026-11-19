@@ -4,9 +4,10 @@
 
 **Blocked by:** 02
 
-**Status:** open
+**Status:** resolved
 
-- [ ] e2e refund: клиент отменяет оплаченный → баннер/чип/статус; админ vendor-отмена оплаченного
-- [ ] Полный цикл зелёный (unit 65+, e2e 12/12, axe 0 нарушений)
-- [ ] AGENTS §2/§3/§6/§8 обновлены, тикеты resolved
-- [ ] Коммит этапа 14
+- [x] e2e **13/13 за 54.2 с**: P3-4 клиентский refund (Dialog «Средства вернутся на счёт» → баннер «— средства вернутся» живьём → reload: «— возврат выполнен» + чип «Возвращено»), P3-5 админ-отклонение оплаченного (select `cancelled_by_vendor` применился — гвард пропустил) — **с первого прогона**
+- [x] БД-верификация e2e-БД: payments refunded ×2, orders (cancelled_by_customer|refunded, cancelled_by_vendor|refunded)
+- [x] Полный цикл зелёный: lint/tsc×2/unit **70**/next build/storybook build; axe **104 прогона (52 стори × 2) — 0 нарушений**; идемпотентность refunded — юнит verifyWebhook + applyPaymentEvent conditional (curl-негативы против живого стека опущены: applyPaymentEvent — БД-функция, юниты её не покрывают по скоупу этапа 12; webhook-парсинг покрыт юнитами)
+- [x] AGENTS §3 (срез) / §6 (Этап 14 ЗАВЕРШЁН) обновлены; роуты не менялись (§8 — 8)
+- [x] Коммит этапа 14; пуш — по явной просьбе

@@ -135,6 +135,11 @@
 		"violations": []
 	},
 	{
+		"id": "shop-ordertracker--refunded-cancelled",
+		"theme": "light",
+		"violations": []
+	},
+	{
 		"id": "shop-priceline--plain",
 		"theme": "light",
 		"violations": []
@@ -386,6 +391,11 @@
 	},
 	{
 		"id": "shop-ordertracker--cancelled-by-customer",
+		"theme": "dark",
+		"violations": []
+	},
+	{
+		"id": "shop-ordertracker--refunded-cancelled",
 		"theme": "dark",
 		"violations": []
 	},

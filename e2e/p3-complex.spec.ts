@@ -9,6 +9,33 @@ import { DEMO, menuCard, phoneSessionCookies, randomEmail, randomPhone } from '.
 
 const visibleMain = (page: Page) => page.locator('main:visible')
 
+/** Онлайн-заказ с оплатой до «Оплачено» (P3-1-паттерн) → uuid заказа */
+async function payOnline(page: Page): Promise<string> {
+	await page.goto('/')
+	await menuCard(page, 'Маргарита').getByRole('button', { name: 'В корзину' }).click()
+	await expect(page.getByText('В корзине 1 товар', { exact: true })).toBeVisible()
+
+	await page.goto('/cart')
+	await page.getByRole('link', { name: 'Перейти к оформлению' }).click()
+	await expect(page).toHaveURL(/\/checkout/)
+	await page.getByLabel('Онлайн-оплата').check()
+	await page.getByLabel('Имя').fill('Е2Е Гость')
+	await page.getByLabel('Телефон').fill('89991234567')
+	await page.getByLabel('Адрес доставки').fill('ул. Тестовая, д. 1')
+	await page.getByRole('button', { name: 'Оформить заказ' }).click()
+
+	await expect(page).toHaveURL(/\/orders\/[0-9a-f-]{36}\/pay/, { timeout: 20_000 })
+	await page.getByLabel('Сбербанк').check()
+	await page.getByRole('button', { name: 'Продолжить' }).click()
+	await expect(page.getByText('Оплата через Сбербанк')).toBeVisible()
+	await page.getByRole('button', { name: 'Оплатить', exact: true }).click()
+	await expect(page).toHaveURL(/\/orders\/[0-9a-f-]{36}$/, { timeout: 20_000 })
+	await expect(visibleMain(page).getByText('Оплачено', { exact: true })).toBeVisible({
+		timeout: 35_000,
+	})
+	return page.url().split('/').pop() ?? ''
+}
+
 test('P3-1 онлайн-оплата: чекаут → банк → заглушка → «Оплачено» ≤35 с', async ({ page }) => {
 	await page.goto('/')
 	await menuCard(page, 'Маргарита').getByRole('button', { name: 'В корзину' }).click()
@@ -118,5 +145,55 @@ test('P3-3 чат гость↔оператор через реальный WS-�
 	await expect(chatLog.getByText(replyText)).toBeVisible({ timeout: 10_000 })
 
 	await clientCtx.close()
+	await adminCtx.close()
+})
+
+test('P3-4 refund: клиент отменяет оплаченный онлайн-заказ', async ({ page }) => {
+	const orderId = await payOnline(page)
+
+	// отмена оплаченного: Dialog с обещанием возврата (этап 14)
+	await page.getByRole('button', { name: 'Отменить заказ' }).click()
+	await expect(page.getByRole('alertdialog')).toBeVisible()
+	await expect(page.getByRole('alertdialog')).toContainText('Средства вернутся на счёт')
+	await page.getByRole('button', { name: 'Да, отменить' }).click()
+
+	// живой setState: баннер с обещанием возврата (мок-возврат мгновенный, но
+	// поллинг замолкает на терминальном — refunded доезжает RSC-снапшотом, спека #8)
+	await expect(visibleMain(page).getByText('— средства вернутся на счёт')).toBeVisible()
+	await expect(visibleMain(page).getByText('Отменён клиентом', { exact: true })).toBeVisible()
+
+	// перезаход: RSC-снапшот refunded → баннер «возврат выполнен» + чип «Возвращено»
+	await page.reload()
+	await expect(visibleMain(page).getByText('— возврат выполнен')).toBeVisible()
+	await expect(visibleMain(page).getByText('Возвращено', { exact: true })).toBeVisible()
+	expect(orderId).toMatch(/[0-9a-f-]{36}/)
+})
+
+test('P3-5 refund: админ отклоняет оплаченный онлайн-заказ', async ({ browser }) => {
+	const guestCtx = await browser.newContext()
+	const guestPage = await guestCtx.newPage()
+	const orderId = await payOnline(guestPage)
+	const shortId = orderId.slice(0, 8)
+
+	const adminCtx = await browser.newContext({
+		storageState: { cookies: await phoneSessionCookies(DEMO.admin), origins: [] },
+	})
+	const adminPage = await adminCtx.newPage()
+	await adminPage.goto('/admin/orders')
+	const row = adminPage.locator('tr').filter({ hasText: `№ ${shortId}` })
+	await expect(row).toBeVisible()
+
+	// refund-ветка ядра: гвард «Оплаченный заказ отменить нельзя» пропускает
+	// оплаченный онлайн (этап 14), возврат выполняется автоматически
+	const trigger = row.getByLabel(`Сменить статус заказа № ${shortId}`)
+	await trigger.click()
+	await adminPage.getByRole('option', { name: 'Отменён заведением (не принят)' }).click()
+	await expect(row).toContainText('Отменён заведением')
+
+	await guestPage.goto(`/orders/${orderId}`)
+	await expect(visibleMain(guestPage).getByText('— возврат выполнен')).toBeVisible()
+	await expect(visibleMain(guestPage).getByText('Возвращено', { exact: true })).toBeVisible()
+
+	await guestCtx.close()
 	await adminCtx.close()
 })
