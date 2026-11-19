@@ -131,10 +131,15 @@ export function OrderTracker({
 					Текущий статус: {statusLabel}
 				</p>
 
-				{/* отмена — баннер (гриллинг Q2); timeout — свой текст (этап 9, Q17) */}
-				{status === 'cancelled_by_customer' && <CancelledBanner text='Вы отменили этот заказ' />}
+				{/* отмена — баннер (гриллинг Q2); timeout — свой текст (этап 9, Q17).
+				    Оплаченный отменённый — дополнение про возврат (этап 14) */}
+				{status === 'cancelled_by_customer' && (
+					<CancelledBanner text={cancelBannerText('Вы отменили этот заказ', paymentStatus)} />
+				)}
 				{status === 'cancelled_by_vendor' && (
-					<CancelledBanner text='Заказ отклонён заведением — не принят' />
+					<CancelledBanner
+						text={cancelBannerText('Заказ отклонён заведением — не принят', paymentStatus)}
+					/>
 				)}
 				{status === 'cancelled_by_timeout' && (
 					<CancelledBanner text='Время оплаты истекло — заказ отменён автоматически' />
@@ -166,6 +171,7 @@ export function OrderTracker({
 						<DialogTitle>Отменить заказ?</DialogTitle>
 						<DialogDescription>
 							Заказ № {orderId.slice(0, 8)} будет отменён. Действие необратимо.
+							{paymentStatus === 'paid' ? ' Средства вернутся на счёт.' : ''}
 						</DialogDescription>
 					</DialogHeader>
 					<DialogFooter>
@@ -192,12 +198,21 @@ function CancelledBanner({ text }: { text: string }) {
 	)
 }
 
+/** Баннер отмены + возврат (этап 14): оплаченный заказ → дополнение про деньги */
+function cancelBannerText(base: string, paymentStatus: string): string {
+	if (paymentStatus === 'refunded') return `${base} — возврат выполнен`
+	if (paymentStatus === 'paid') return `${base} — средства вернутся на счёт`
+	return base
+}
+
 /**
  * Платёжный чип (этап 9, Q9) — текст, не только цвет (§7): online+pending
  * «Ожидает оплаты» (info-токен), paid «Оплачено» (success); on_receipt
  * «При получении» (нейтральный) — включая оплаченные при передаче (Q21).
- * На отменённых заказах чип скрыт — причину объясняет баннер отмены
- * (ревью: «Ожидает оплаты» рядом с «Отменён» — семантический шум).
+ * На отменённых заказах чип скрыт — кроме refund-статусов (этап 14):
+ * «Возвращено»/«Возврат выполняется» рядом с «Отменён» — ответ на вопрос
+ * «а деньги?» (ревью этапа 9 скрывало «Ожидает оплаты» как шум — возврат
+ * информативен).
  */
 function PaymentChip({
 	paymentMethod,
@@ -208,13 +223,26 @@ function PaymentChip({
 	paymentStatus: string
 	orderStatus: string
 }) {
-	if (orderStatus.startsWith('cancelled_')) return null
+	const cancelled = orderStatus.startsWith('cancelled_')
+	if (cancelled && paymentStatus !== 'refunded' && paymentStatus !== 'refunding') {
+		return null // «Ожидает оплаты» рядом с «Отменён» — семантический шум (ревью этапа 9)
+	}
 	if (paymentMethod !== 'online') {
 		// on_receipt: после получения заказ уже оплачен (Q21) — «При получении» без лжи
 		const collected = isTerminalStatus(orderStatus) && paymentStatus === 'paid'
 		return (
 			<Badge variant='outline' className='h-6 px-2.5 text-sm text-muted-foreground'>
 				{collected ? 'Оплачено при получении' : 'При получении'}
+			</Badge>
+		)
+	}
+	if (paymentStatus === 'refunded' || paymentStatus === 'refunding') {
+		return (
+			<Badge
+				variant='outline'
+				className='h-6 border-status-success/30 bg-status-success/10 px-2.5 text-sm text-status-success'
+			>
+				{paymentStatus === 'refunded' ? 'Возвращено' : 'Возврат выполняется'}
 			</Badge>
 		)
 	}

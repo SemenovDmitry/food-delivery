@@ -32,7 +32,8 @@ export const ORDER_STATUSES = [
 ] as const
 export type OrderStatus = (typeof ORDER_STATUSES)[number]
 
-export const ORDER_PAYMENT_STATUSES = ['pending', 'paid'] as const
+/** refunded (этап 14): заказ оплачен и возвращён — чип «Возвращено» на отменённом */
+export const ORDER_PAYMENT_STATUSES = ['pending', 'paid', 'refunded'] as const
 export type OrderPaymentStatus = (typeof ORDER_PAYMENT_STATUSES)[number]
 
 /**
@@ -43,7 +44,20 @@ export type OrderPaymentStatus = (typeof ORDER_PAYMENT_STATUSES)[number]
 export const PAYMENT_METHODS = ['online', 'on_receipt'] as const
 export type PaymentMethodKind = (typeof PAYMENT_METHODS)[number]
 
-export const PAYMENT_STATUSES = ['created', 'processing', 'paid', 'failed', 'cancelled'] as const
+/**
+ * refunding/refunded (этап 14): возврат запрошен (деньги у провайдера в
+ * обработке) / выполнен. text-колонка без CHECK — без миграции, паттерн
+ * cancelled_by_timeout (этап 9).
+ */
+export const PAYMENT_STATUSES = [
+	'created',
+	'processing',
+	'paid',
+	'failed',
+	'cancelled',
+	'refunding',
+	'refunded',
+] as const
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[number]
 
 export const NOTIFICATION_STATUSES = ['pending', 'sent', 'failed'] as const

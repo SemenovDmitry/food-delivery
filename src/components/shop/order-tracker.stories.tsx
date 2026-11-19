@@ -69,3 +69,12 @@ export const Delivered: Story = { args: { initialStatus: 'delivered' } }
 
 /** Отменён клиентом — destructive-баннер ВМЕСТО таймлайна (4-бис) */
 export const CancelledByCustomer: Story = { args: { initialStatus: 'cancelled_by_customer' } }
+
+/** Отменён оплаченный онлайн — баннер «возврат выполнен» + чип «Возвращено» (этап 14) */
+export const RefundedCancelled: Story = {
+	args: {
+		initialStatus: 'cancelled_by_customer',
+		initialPaymentMethod: 'online',
+		initialPaymentStatus: 'refunded',
+	},
+}

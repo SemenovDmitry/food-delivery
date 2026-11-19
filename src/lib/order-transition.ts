@@ -5,6 +5,7 @@ import { notifications, orderStatusEvents, orders } from '@/db/schema'
 import { isUuid } from '@/lib/id'
 import { orderReadySms } from '@/lib/notifications/order-ready'
 import { fulfillmentOf, isOrderStatus, nextStatuses } from '@/lib/order-timeline'
+import { refundCancelOrder } from '@/lib/payments/refund'
 import type { ActionResult } from '@/lib/types'
 
 /**
@@ -15,12 +16,13 @@ import type { ActionResult } from '@/lib/types'
  * action-обёртке (джоба вне request-контекста; заказы читаются без 'use cache').
  *
  * Гварды (унаследованы, тексты ошибок — дословно, UX админки не меняется):
- * карта nextStatuses (вперёд по своему fulfillment), оплаченные не отменяются
- * никогда (refund вне скоупа), кухня не стартует неоплаченный онлайн-заказ
- * (этап 9, Q18), сбор on_receipt при передаче (этап 9, Q21). Гонка гасится
- * conditional UPDATE (паттерн cancelOrder). SMS «заказ готов» — строка аутбокса
- * в той же транзакции (этап 10, Q6): заказ проходит ready ровно один раз,
- * значит строка рождается ровно одна.
+ * карта nextStatuses (вперёд по своему fulfillment), оплаченный онлайн отменяется
+ * с refund (этап 14), on_receipt+paid — страховка «Оплаченный заказ отменить
+ * нельзя», кухня не стартует неоплаченный онлайн-заказ (этап 9, Q18), сбор
+ * on_receipt при передаче (этап 9, Q21). Гонка гасится conditional UPDATE
+ * (паттерн cancelOrder). SMS «заказ готов» — строка аутбокса в той же
+ * транзакции (этап 10, Q6): заказ проходит ready ровно один раз, значит
+ * строка рождается ровно одна.
  */
 export async function transitionOrderStatus(
 	orderId: string,
@@ -47,8 +49,20 @@ export async function transitionOrderStatus(
 	if (!nextStatuses(order.status, fulfillment).includes(next)) {
 		return { data: null, error: 'Недопустимый переход статуса' }
 	}
-	if (next === 'cancelled_by_vendor' && order.paymentStatus !== 'pending') {
+
+	// этап 14: оплаченный онлайн отменяется с refund (refundCancelOrder); страховка
+	// on_receipt+paid остаётся — деньги получены наличными при передаче (недостижимо
+	// на активных статусах, но ядро не должно молча пропустить)
+	const isPaid = order.paymentStatus === 'paid'
+	if (next === 'cancelled_by_vendor' && isPaid && order.paymentMethod !== 'online') {
 		return { data: null, error: 'Оплаченный заказ отменить нельзя' }
+	}
+	if (next === 'cancelled_by_vendor' && isPaid) {
+		const refunded = await refundCancelOrder(orderId, 'vendor', {
+			raceError: 'Статус уже изменён — обновите список',
+		})
+		if (refunded.data === null) return refunded
+		return { data: { status: next }, error: null }
 	}
 
 	// этап 9, Q18: кухня не стартует неоплаченный онлайн-заказ — оплата резервом.

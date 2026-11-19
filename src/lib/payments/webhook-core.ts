@@ -44,13 +44,17 @@ export async function applyPaymentEvent(event: WebhookEvent): Promise<PaymentEve
 	if (!order) return 'missing'
 
 	return db.transaction(async (tx) => {
-		// 1) заказ уже отменён (любая причина) — платёж закрывается, деньги не применяются:
-		// refund не в скоупе, но paid на отменённом заказе не появится (Q5)
+		// 1) заказ уже отменён (любая причина) — деньги не применяются (Q5). Платёж
+		// закрывается только в «незрелых» статусах; paid/refunding/refunded не
+		// затрагиваются — ими владеет refund-поток (этап 14: отмена оплаченного
+		// легальна и платёж идёт refunding → refunded)
 		if ((CANCELLED_ORDER_STATUSES as readonly string[]).includes(order.status)) {
 			await tx
 				.update(payments)
 				.set({ status: 'cancelled', updatedAt: new Date() })
-				.where(eq(payments.id, payment.id))
+				.where(
+					and(eq(payments.id, payment.id), inArray(payments.status, ['created', 'processing'])),
+				)
 			return 'conflict'
 		}
 
@@ -132,6 +136,25 @@ export async function applyPaymentEvent(event: WebhookEvent): Promise<PaymentEve
 			}
 			// 0 строк в обеих = идемпотентный replay (уже оплачен) — БД не изменилась
 			return paidPayments.length === 0 && paidOrders.length === 0 ? 'duplicate' : 'applied'
+		}
+
+		// event.status === 'refunded' (этап 14): провайдер подтвердил возврат.
+		// paid|refunding → refunded идемпотентно; на «незрелых» статусах — conflict
+		// (деньги не списывались). Заказ не трогается — он уже отменён refund-потоком
+		if (event.status === 'refunded') {
+			const refundedRows = await tx
+				.update(payments)
+				.set({ status: 'refunded', updatedAt: new Date() })
+				.where(and(eq(payments.id, payment.id), inArray(payments.status, ['paid', 'refunding'])))
+				.returning({ id: payments.id })
+			// order-level paymentStatus → refunded (этап 14): чип через существующий DTO
+			if (refundedRows.length > 0) {
+				await tx
+					.update(orders)
+					.set({ paymentStatus: 'refunded', updatedAt: new Date() })
+					.where(and(eq(orders.id, order.id), eq(orders.paymentStatus, 'paid')))
+			}
+			return refundedRows.length === 0 ? 'duplicate' : 'applied'
 		}
 
 		// event.status === 'failed' (Q19: «Отмена» на банке)

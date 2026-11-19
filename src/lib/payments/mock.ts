@@ -19,6 +19,15 @@ export class MockProvider implements PaymentProvider {
 		}
 	}
 
+	/**
+	 * Refund (этап 14): синхронный мгновенный возврат — мок-«банк» подтверждает
+	 * сразу; настоящий провайдер делал бы это асинхронно и подтверждал webhook'ом
+	 * refunded (ядро готово). Внешний вызов — вне транзакций вызывающего.
+	 */
+	async refund(_input: { externalId: string; amount: number }): Promise<{ refundId: string }> {
+		return { refundId: `mock_refund_${randomUUID()}` }
+	}
+
 	async verifyWebhook(headers: Headers, rawBody: string): Promise<WebhookEvent | null> {
 		const signature = headers.get(WEBHOOK_SIGNATURE_HEADER)
 		if (!signature || !verifyHmac(rawBody, env.PAYMENTS_WEBHOOK_SECRET, signature)) return null
@@ -28,7 +37,7 @@ export class MockProvider implements PaymentProvider {
 			if (typeof parsed !== 'object' || parsed === null) return null
 			const { paymentId, status } = parsed as Record<string, unknown>
 			if (typeof paymentId !== 'string' || !paymentId) return null
-			if (status !== 'paid' && status !== 'failed') return null
+			if (status !== 'paid' && status !== 'failed' && status !== 'refunded') return null
 			return { paymentId, status }
 		} catch {
 			return null // кривой JSON — не событие

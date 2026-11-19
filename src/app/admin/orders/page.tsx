@@ -110,7 +110,7 @@ export default async function AdminOrdersPage({ searchParams }: PageProps<'/admi
 										{itemCount} шт · <span className='font-medium'>{formatPrice(orderTotal)}</span>
 									</TableCell>
 									<TableCell>
-										<PaymentBadge paid={order.paymentStatus === 'paid'} />
+										<PaymentBadge paymentStatus={order.paymentStatus} />
 									</TableCell>
 									<TableCell>
 										<OrderStatusCell
@@ -156,8 +156,19 @@ function FilterChip({ label, href, active }: { label: string; href: string; acti
 	)
 }
 
-/** Оплата — бейдж read-only: переворот делает webhook этапа 9 (Q10) */
-function PaymentBadge({ paid }: { paid: boolean }) {
+/** Оплата — бейдж read-only: переворот делает webhook этапа 9 (Q10); refund — этап 14 */
+function PaymentBadge({ paymentStatus }: { paymentStatus: string }) {
+	if (paymentStatus === 'refunded') {
+		return (
+			<Badge
+				variant='outline'
+				className='border-status-success/30 bg-status-success/10 text-status-success'
+			>
+				Возврат выполнен
+			</Badge>
+		)
+	}
+	const paid = paymentStatus === 'paid'
 	return (
 		<Badge
 			variant='outline'
