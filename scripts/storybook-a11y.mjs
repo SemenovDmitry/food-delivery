@@ -13,15 +13,29 @@ const PORT = 6262
 const BASE = `http://localhost:${PORT}`
 const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe'
 const THEMES = ['light', 'dark']
+// --out=slice-3 (слайс 3): скриншоты и отчёт в подпапку — артефакты слайсов
+// 1–2 не перезаписываются; дефолт — прежние пути этапа 13
+const out = process.argv.find((a) => a.startsWith('--out='))?.split('=')[1] ?? ''
+const outDir = out ? `.scratch/stage-13/${out}` : '.scratch/stage-13'
 // Скриншоты характерных сторей (id из index.json) в обеих темах
-const SHOTS = [
-	'shop-statusbadge--cancelled-by-customer',
-	'shop-counter--at-max',
-	'shop-productcard--set-with-components',
-	'shop-promoblock--custom-code-plate',
-	'shop-checkoutform--empty-guest-form',
-	'shop-ordertracker--unpaid-online',
-]
+const SHOTS =
+	out === 'slice-3'
+		? [
+				'shop-header--authorized',
+				'admin-orderstatuscell--unpaid-online',
+				'admin-productform--set-composition',
+				'admin-userstable--table',
+				'payments-payclient--bank-selection',
+				'auth-authphonewizard--login',
+			]
+		: [
+				'shop-statusbadge--cancelled-by-customer',
+				'shop-counter--at-max',
+				'shop-productcard--set-with-components',
+				'shop-promoblock--custom-code-plate',
+				'shop-checkoutform--empty-guest-form',
+				'shop-ordertracker--unpaid-online',
+			]
 
 const sbBuild = spawnSync('pnpm', ['exec', 'storybook', 'build'], { stdio: 'inherit', shell: true })
 if (sbBuild.status !== 0) process.exit(sbBuild.status ?? 1)
@@ -72,7 +86,7 @@ page.on('console', (msg) => {
 	}
 })
 
-mkdirSync('.scratch/stage-13/screenshots', { recursive: true })
+mkdirSync(`${outDir}/screenshots`, { recursive: true })
 const report = []
 const failed = []
 let screenshots = 0
@@ -101,7 +115,7 @@ for (const theme of THEMES) {
 			report.push({ id, theme, violations })
 			if (SHOTS.includes(id)) {
 				await page.screenshot({
-					path: `.scratch/stage-13/screenshots/${id}-${theme}.png`,
+					path: `${outDir}/screenshots/${id}-${theme}.png`,
 					fullPage: true,
 				})
 				screenshots++
@@ -126,5 +140,5 @@ for (const r of flagged) {
 		if (v.html) console.log(`        node: ${v.html}`)
 	}
 }
-writeFileSync('.scratch/stage-13/a11y-report.json', JSON.stringify(report, null, '\t'))
-console.log('[a11y] отчёт — .scratch/stage-13/a11y-report.json')
+writeFileSync(`${outDir}/a11y-report.json`, JSON.stringify(report, null, '\t'))
+console.log(`[a11y] отчёт — ${outDir}/a11y-report.json`)

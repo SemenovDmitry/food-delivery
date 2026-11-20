@@ -1,7 +1,8 @@
 /**
- * Мок server actions заказа/промо для Storybook (этап 13, слайс 2):
- * промо применяется всегда (subtotal фикстур проходим), заказ создаётся.
- * Сигнатуры — typeof прод-модуля (tsc ловит расхождение).
+ * Мок server actions заказа/промо для Storybook (этап 13, слайс 2; слайс 3
+ * добавил repeatOrder): промо применяется всегда (subtotal фикстур проходим),
+ * заказ создаётся, повтор добавляет позиции. Сигнатуры — typeof прод-модуля
+ * (tsc ловит расхождение).
  */
 import type * as OrderActions from '@/lib/actions/orders'
 
@@ -30,5 +31,10 @@ export const updateOrderStatus: typeof OrderActions.updateOrderStatus = async (
 	status,
 ) => ({
 	data: { status },
+	error: null,
+})
+
+export const repeatOrder: typeof OrderActions.repeatOrder = async () => ({
+	data: { added: 2 },
 	error: null,
 })

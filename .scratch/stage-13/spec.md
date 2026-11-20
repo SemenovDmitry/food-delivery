@@ -27,3 +27,56 @@ support-chat (WS), серверные компоненты (header/footer-сло
 ## Готово, когда
 
 - `pnpm storybook` поднимается, все стори рендерятся в обеих темах; axe-нарушений по стори слайса 1 нет (или задокументированы с обоснованием); `pnpm build-storybook` проходит; `pnpm build`/lint/tsc не сломаны; AGENTS §2/§3/§6 обновлены
+
+---
+
+## Слайс 3 — дозаполнение покрытия (гриллинг 2026-11-19/20, Q1–Q7 — пользователь подтвердил всё)
+
+Метрика покрытия — **компоненты из 37 не-ui** (13 → 31) и число сторей (52 → 84) раздельно; фигурировавшая в аудите дробь «13/52» — конфляция двух единиц (13 = компоненты, 52 = стори), не воспроизводить. Стори ко-локацией рядом с компонентами (shop/admin/auth/payments/themes), namespace: `Shop/`, `Admin/`, `Auth/`, `Payments/`, `Theme/`. Тикеты 05–09 — `issues/`. Примечание: header из «Вне скоупа» исходной спеки ПОКРЫВАЕТСЯ — он клиентский, а серверный CartBadge приходит через проп-слот `cartSlot: ReactNode` (статичный ReactNode в стори).
+
+| Q   | Решение                                                                                                                                                                                                                                                                                                                                                               |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Q1  | Скоуп — **вариант В: все 18 клиентских** из 24 без сторей → 31/37 не-ui. Исключения (6): cart-badge/active-orders-card/footer — серверные RSC, support-chat/chat-console — WS-инфра, theme-provider — тривиальный next-themes-враппер. Скрытая цель слайса: **админ-формы впервые проходят a11y-аудит** (Lighthouse этапа 7 гонял только витрину/auth)                |
+| Q2  | Политика состояний: args — для пропс-пиннable; моки получают `__set`-сеттеры для состояний источника данных (сессия header); внутренние степ-машины (шаг 2 обоих auth-визардов, шаг 2 pay-client) НЕ сторифицируются — e2e-территория (консистентно с ревью слайса 2 «внутреннее состояние — не args»); play-функции не вводим (0 в репо), тест-only пропсы не вводим |
+| Q3  | Процесс — **продолжение этапа 13** (тикет 05–09), не новый этап                                                                                                                                                                                                                                                                                                       |
+| Q4  | Приёмка — полный цикл (lint/tsc×2/build-storybook) + axe 84 стори × 2 темы = 168 прогонов (порог 0) + ~12 скриншотов + AGENTS §2/§3 с честной метрикой; один коммит, без пуша                                                                                                                                                                                         |
+| Q5  | Шаг-2 состояния визардов и pay-client — пропускаем (та же форма с другим инпутом, axe-ценность ≈ 0; пути покрыты e2e P1-auth и платёжными сценариями этапа 12)                                                                                                                                                                                                        |
+| Q6  | Матрица 32 сторей (ниже) подтверждена целиком                                                                                                                                                                                                                                                                                                                         |
+| Q7  | Нарезка 05 (моки) → 06 (shop-хвост + root + admin-лёгкие, 14) → 07 (админ-формы, 11) → 08 (auth + payments, 7) → 09 (приёмка); находки axe чинятся по ходу 06–08 в прод-компонентах, гейт — 09                                                                                                                                                                        |
+
+### Мок-инфраструктура (тикет 05)
+
+`.storybook/mocks/`: +8 action-модулей по typeof-паттерну (auth, categories, products, images, promotions, users, settings, payments) + `order-actions` += `repeatOrder`; **новый мок `@/lib/auth-client`** — `useSession`/`signOut`/`phoneNumber.verify`/`emailOtp.verifyEmail` + `__setSession` ('guest' | 'pending' | user); типизация РУЧНАЯ (typeof authClient нецелевой — клиент better-auth тянет плагины/fetch-типы), drift-риск документируется в шапке мока. Алиасы `main.ts`: 2 → 11.
+
+### Матрица (32 новых стори → 84 всего)
+
+| Компонент              | Title                      | Стори                                                                                                                       |
+| ---------------------- | -------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| product-details        | Shop/ProductDetails        | 2: Товар (margherita, emoji-фолбэк) · Сет (shawarmaForTwo)                                                                  |
+| header                 | Shop/Header                | 3: Гость · Авторизован (бейдж Σ3, dropdown закрыт) · Загрузка сессии — через `__setSession`; cartSlot = статичный ReactNode |
+| repeat-order-button    | Shop/RepeatOrderButton     | 1: Default (успех/ошибка — тосты, e2e)                                                                                      |
+| theme-toggle           | Theme/ThemeToggle          | 1 (light/dark toolbar показывает обе)                                                                                       |
+| admin-nav              | Admin/AdminNav             | 2: Admin (8 ссылок, активная — per-story PathnameContext `/admin/orders`) · Manager (2 ссылки)                              |
+| per-page-select        | Admin/PerPageSelect        | 1                                                                                                                           |
+| sortable-list          | Admin/SortableList         | 1 (generic-фикстуры; DnD-интеракции не эмулируем)                                                                           |
+| order-status-cell      | Admin/OrderStatusCell      | 3: Готовится (delivery/paid) · Неоплаченный онлайн (disabled + подсказка) · Доставлен (терминальный)                        |
+| product-form           | Admin/ProductForm          | 3: Создание · Редактирование (delete-кнопка + поле фото, imageSrc=null) · Сет-состав (useFieldArray)                        |
+| promotion-form         | Admin/PromotionForm        | 2: Создание (percent) · Редактирование-скрытый (SECRET15, fixed, isPublic=false)                                            |
+| categories-admin       | Admin/CategoriesAdmin      | 1 (список + DnD-строки)                                                                                                     |
+| products-reorder       | Admin/ProductsReorder      | 1 (emoji/имя/цена, бейджи Сет/Скрыт)                                                                                        |
+| users-table            | Admin/UsersTable           | 2: Таблица (banned-бейдж, self-row disabled) · Пусто                                                                        |
+| delivery-settings-form | Admin/DeliverySettingsForm | 1 (prefill 199/1000)                                                                                                        |
+| payment-methods-form   | Admin/PaymentMethodsForm   | 1 (2 активных провайдера)                                                                                                   |
+| auth-phone-wizard      | Auth/AuthPhoneWizard       | 2: Вход · Регистрация (гард-тексты); шаг «SMS-код» — e2e                                                                    |
+| email-link-form        | Auth/EmailLinkForm         | 1 (prefill email); шаг «код» — e2e                                                                                          |
+| pay-client             | Payments/PayClient         | 4: Выбор банка · Нет провайдеров · Повтор после failed · Окно истекло; шаг «заглушка банка» — e2e                           |
+
+06 = 8 компонентов / 14 сторей · 07 = 7 / 11 · 08 = 3 / 7. Фикстуры shop — из `fixtures.ts`; admin/auth-строки — локально в стори-файлах, типы через `import type` (браузерная безопасность — прецедент `fixtures.ts`).
+
+### Готово, когда (слайс 3)
+
+- полный цикл зелёный: lint / tsc×2 / `pnpm build-storybook`
+- axe 168 прогонов, 0 нарушений (находки чинятся в прод-компонентах, реверифицируются)
+- ~12 скриншотов (6 показательных × 2 темы) + a11y-report.json — `.scratch/stage-13/slice-3/`
+- AGENTS §2/§3 — честная метрика («84 стори × 31 компонент из 37 не-ui; исключены 6: 3 RSC + 2 WS + theme-provider»)
+- один коммит, без пуша

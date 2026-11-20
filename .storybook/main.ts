@@ -33,6 +33,42 @@ const config: StorybookConfig = {
 				find: '@/lib/actions/orders',
 				replacement: fileURLToPath(new URL('./mocks/order-actions.ts', import.meta.url)),
 			},
+			{
+				find: '@/lib/actions/auth',
+				replacement: fileURLToPath(new URL('./mocks/auth-actions.ts', import.meta.url)),
+			},
+			{
+				find: '@/lib/actions/categories',
+				replacement: fileURLToPath(new URL('./mocks/categories-actions.ts', import.meta.url)),
+			},
+			{
+				find: '@/lib/actions/products',
+				replacement: fileURLToPath(new URL('./mocks/products-actions.ts', import.meta.url)),
+			},
+			{
+				find: '@/lib/actions/images',
+				replacement: fileURLToPath(new URL('./mocks/images-actions.ts', import.meta.url)),
+			},
+			{
+				find: '@/lib/actions/promotions',
+				replacement: fileURLToPath(new URL('./mocks/promotions-actions.ts', import.meta.url)),
+			},
+			{
+				find: '@/lib/actions/users',
+				replacement: fileURLToPath(new URL('./mocks/users-actions.ts', import.meta.url)),
+			},
+			{
+				find: '@/lib/actions/settings',
+				replacement: fileURLToPath(new URL('./mocks/settings-actions.ts', import.meta.url)),
+			},
+			{
+				find: '@/lib/actions/payments',
+				replacement: fileURLToPath(new URL('./mocks/payments-actions.ts', import.meta.url)),
+			},
+			{
+				find: '@/lib/auth-client',
+				replacement: fileURLToPath(new URL('./mocks/auth-client.ts', import.meta.url)),
+			},
 		]
 		return vite
 	},

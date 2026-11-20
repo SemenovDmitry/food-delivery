@@ -195,14 +195,20 @@ export function AuthPhoneWizard({ mode, redirectTo }: AuthPhoneWizardProps) {
 				{mode === 'login' ? (
 					<>
 						Нет аккаунта?{' '}
-						<Link href='/register' className='text-primary hover:underline'>
+						<Link
+							href='/register'
+							className='text-primary underline underline-offset-2 hover:underline'
+						>
 							Зарегистрируйтесь
 						</Link>
 					</>
 				) : (
 					<>
 						Уже есть аккаунт?{' '}
-						<Link href='/login' className='text-primary hover:underline'>
+						<Link
+							href='/login'
+							className='text-primary underline underline-offset-2 hover:underline'
+						>
 							Войдите
 						</Link>
 					</>
